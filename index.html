@@ -512,8 +512,11 @@
             scene.add(new THREE.GridHelper(200, 100, 0x888888, 0xdddddd));
 
             controls = new THREE.PointerLockControls(camera, document.body);
+            // ★iPad等（外部キーボード接続時含む）はSafariがPointer Lock API自体に非対応のため、
+            // 対応可否を検出してロック要求・キー入力ブロック判定の両方に使う
+            const pointerLockSupported = typeof document.body.requestPointerLock === 'function';
             document.addEventListener('click', e => { 
-                if (window.innerWidth <= 768 || ['BUTTON','INPUT','SELECT'].includes(e.target.tagName)) return;
+                if (window.innerWidth <= 768 || !pointerLockSupported || ['BUTTON','INPUT','SELECT'].includes(e.target.tagName)) return;
                 if (!document.getElementById('admin-panel').contains(e.target) && !document.getElementById('chat-container').contains(e.target)) controls.lock(); 
             });
             scene.add(controls.getObject());
@@ -632,7 +635,7 @@
                     return; 
                 }
                 
-                if(!controls.isLocked && window.innerWidth > 768 && e.code !== 'KeyO' && e.code !== 'KeyP') return; 
+                if(!controls.isLocked && pointerLockSupported && window.innerWidth > 768 && e.code !== 'KeyO' && e.code !== 'KeyP') return; 
                 if(document.activeElement.tagName === 'INPUT') return; 
                 
                 if (isAdmin && keysState['KeyO'] && keysState['KeyP']) { const ap = document.getElementById('admin-panel'); ap.style.display = ap.style.display === 'none' ? 'flex' : 'none'; if (controls.isLocked) controls.unlock(); }
