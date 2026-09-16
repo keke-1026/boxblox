@@ -132,8 +132,9 @@
             <div class="footer-section">
                 <span>遊び方 (How to play)</span>
                 <span class="footer-text">
-                    [PC専用] WASD:移動 / Shift:ダッシュ / Space:ジャンプ / Ctrl:しゃがむ<br>
-                    左クリック長押し:物を掴む・離して投げる / B:ランダムで物を出す / M:退出 / /:チャット / Tab:プレイヤー一覧<br>
+                    WASD:移動 / Shift:ダッシュ / Space:ジャンプ / Ctrl:しゃがむ<br>
+                    ←→↑↓ or 画面ドラッグ:視点変更 / 左クリック(またはF)長押し:物を掴む・離して投げる<br>
+                    B:ランダムで物を出す / M:退出 / /:チャット / Tab:プレイヤー一覧<br>
                     ※プラベ鯖のみ2回ジャンプで空中浮遊 (Spaceで上昇、Ctrlで下降)
                 </span>
             </div>
@@ -623,7 +624,8 @@
                 lastJumpTime = now;
             }
 
-            let moveF = false, moveB = false, moveL = false, moveR = false, moveShift = false, moveJump = false, moveCrouch = false, lookLeft = false, lookRight = false;
+            let moveF = false, moveB = false, moveL = false, moveR = false, moveShift = false, moveJump = false, moveCrouch = false, lookLeft = false, lookRight = false, lookUp = false, lookDown = false;
+            let fKeyActive = false;
             
             const keysState = {};
             document.addEventListener('keydown', e => { 
@@ -644,9 +646,12 @@
                 if(e.code === 'KeyA') moveL=true; if(e.code === 'KeyD') moveR=true; 
                 if(e.code === 'ArrowLeft') { e.preventDefault(); lookLeft = true; }
                 if(e.code === 'ArrowRight') { e.preventDefault(); lookRight = true; }
+                if(e.code === 'ArrowUp') { e.preventDefault(); lookUp = true; }
+                if(e.code === 'ArrowDown') { e.preventDefault(); lookDown = true; }
                 if(e.code === 'ShiftLeft' || e.code === 'ShiftRight') moveShift = true;
                 if(e.code === 'ControlLeft' || e.code === 'ControlRight') { isCrouching = true; moveCrouch = true; }
                 if(e.code === 'Space' && !moveJump) { moveJump = true; handleJump(); }
+                if(e.code === 'KeyF' && !fKeyActive) { fKeyActive = true; grab(); }
                 if(e.code === 'KeyB') triggerSpawn();
                 if(e.code === 'KeyM') document.getElementById('leave-btn').click();
             });
@@ -656,9 +661,12 @@
                 if(e.code === 'KeyA') moveL=false; if(e.code === 'KeyD') moveR=false; 
                 if(e.code === 'ArrowLeft') lookLeft = false;
                 if(e.code === 'ArrowRight') lookRight = false;
+                if(e.code === 'ArrowUp') lookUp = false;
+                if(e.code === 'ArrowDown') lookDown = false;
                 if(e.code === 'ShiftLeft' || e.code === 'ShiftRight') moveShift = false;
                 if(e.code === 'ControlLeft' || e.code === 'ControlRight') { isCrouching = false; moveCrouch = false; }
                 if(e.code === 'Space') moveJump = false;
+                if(e.code === 'KeyF') { fKeyActive = false; release(); }
             });
 
             // ★左右矢印キー・画面ドラッグでの視点変更（Pointer Lockが使えない環境向け）
@@ -759,6 +767,8 @@
                 const LOOK_TURN_SPEED = 1.8; // rad/sec
                 if (lookLeft) applyLookDelta(-LOOK_TURN_SPEED * delta, 0);
                 if (lookRight) applyLookDelta(LOOK_TURN_SPEED * delta, 0);
+                if (lookUp) applyLookDelta(0, -LOOK_TURN_SPEED * delta);
+                if (lookDown) applyLookDelta(0, LOOK_TURN_SPEED * delta);
 
                 let velX = 0, velZ = 0;
                 
