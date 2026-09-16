@@ -208,7 +208,10 @@
         
         <div id="top-right-menu">
             <button class="action-btn" id="admin-menu-btn" style="display: none;"><span class="material-symbols-outlined">settings</span></button>
-            <button class="action-btn" id="chat-toggle-btn"><span class="material-symbols-outlined">chat</span></button>
+            <div style="display: flex; flex-direction: column; align-items: center; gap: 10px;">
+                <button class="action-btn" id="chat-toggle-btn"><span class="material-symbols-outlined">chat</span></button>
+                <button class="action-btn" id="notif-toggle-btn" title="通知設定"><span class="material-symbols-outlined">notifications_off</span></button>
+            </div>
             <div id="chat-container">
                 <div id="chat-log"></div>
                 <div id="chat-input-area">
@@ -258,7 +261,36 @@
             const container = document.getElementById('notification-container'), notif = document.createElement('div');
             notif.className = 'notification'; notif.innerText = msg; container.appendChild(notif);
             setTimeout(() => { if(notif.parentNode) notif.parentNode.removeChild(notif); }, 3000);
+            if (notifPref === 'silent' && 'Notification' in window && Notification.permission === 'granted') {
+                try { new Notification('boxblox', { body: msg, silent: true }); } catch (err) {}
+            }
         }
+
+        // ★通知設定（チャットボタンの下）：OFF（出さない） / silent（出す・無音）を切り替え
+        let notifPref = localStorage.getItem('boxblox_notif_pref') || 'off';
+        function updateNotifBtnUI() {
+            const btn = document.getElementById('notif-toggle-btn');
+            if (!btn) return;
+            btn.innerHTML = notifPref === 'silent'
+                ? '<span class="material-symbols-outlined">notifications_paused</span>'
+                : '<span class="material-symbols-outlined">notifications_off</span>';
+            btn.title = notifPref === 'silent' ? '通知: ON（無音）' : '通知: OFF';
+        }
+        updateNotifBtnUI();
+        document.getElementById('notif-toggle-btn').addEventListener('click', async () => {
+            if (notifPref === 'off') {
+                if (!('Notification' in window)) { showNotification('このブラウザでは通知に対応していません'); return; }
+                let perm = Notification.permission;
+                if (perm === 'default') { perm = await Notification.requestPermission(); }
+                if (perm !== 'granted') { showNotification('通知が許可されていません'); return; }
+                notifPref = 'silent';
+            } else {
+                notifPref = 'off';
+            }
+            localStorage.setItem('boxblox_notif_pref', notifPref);
+            updateNotifBtnUI();
+            showNotification(notifPref === 'silent' ? '通知: ON（無音）にしました' : '通知: OFFにしました');
+        });
         function formatTimeElapsed(ms) { const m = Math.floor(ms / 60000), s = Math.floor((ms % 60000) / 1000); return `${m}分${s}秒`; }
         function formatTimeHM(timestamp) { const date = new Date(timestamp); return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`; }
 
