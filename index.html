@@ -257,13 +257,18 @@
             e.currentTarget.innerHTML = isDarkMode ? '<span class="material-symbols-outlined">light_mode</span>' : '<span class="material-symbols-outlined">dark_mode</span>';
         });
 
+        // ★実ブラウザ通知（notifPrefがsilentの時だけ発火）
+        function fireOsNotification(title, body) {
+            if (notifPref === 'silent' && 'Notification' in window && Notification.permission === 'granted') {
+                try { new Notification(title, { body: body, silent: true }); } catch (err) {}
+            }
+        }
+
         function showNotification(msg) {
             const container = document.getElementById('notification-container'), notif = document.createElement('div');
             notif.className = 'notification'; notif.innerText = msg; container.appendChild(notif);
             setTimeout(() => { if(notif.parentNode) notif.parentNode.removeChild(notif); }, 3000);
-            if (notifPref === 'silent' && 'Notification' in window && Notification.permission === 'granted') {
-                try { new Notification('boxblox', { body: msg, silent: true }); } catch (err) {}
-            }
+            fireOsNotification('boxblox', msg);
         }
 
         // ★通知設定（チャットボタンの下）：OFF（出さない） / silent（出す・無音）を切り替え
@@ -733,11 +738,13 @@
 
             let chatEnabled = true; settingsRef.on('value', snap => { if(!snap.exists()) return; chatEnabled = snap.val().chatEnabled; document.getElementById('chat-input').placeholder = chatEnabled ? "チャット ( / で入力 )" : "チャットは無効化"; document.getElementById('chat-input').disabled = !chatEnabled; document.getElementById('chat-send').disabled = !chatEnabled; document.getElementById('toggle-chat-btn').innerHTML = chatEnabled ? 'チャット: ON' : 'チャット: OFF'; document.getElementById('toggle-hub-btn').innerHTML = snap.val().showPlayers ? 'Hub表示: ON' : 'Hub表示: OFF'; });
             
+            let chatInitialLoad = true; chatRef.once('value', () => { chatInitialLoad = false; });
             chatRef.on('child_added', snap => { 
                 const msg = snap.val(), log = document.getElementById('chat-log'), div = document.createElement('div');
                 div.className = "chat-msg-line";
                 div.innerHTML = `<span class="chat-time">[${formatTimeHM(msg.timestamp||Date.now())}]</span> <strong>${msg.sender}:</strong> ${msg.text}`; 
                 log.appendChild(div); log.scrollTop = log.scrollHeight; 
+                if (!chatInitialLoad && msg.sender !== myName) fireOsNotification(msg.sender, msg.text);
             });
             
             function sendChat() { const inp = document.getElementById('chat-input'); if(inp.value.trim() && chatEnabled) { chatRef.push({ sender: myName, text: inp.value.trim(), timestamp: firebase.database.ServerValue.TIMESTAMP }); inp.value = ''; } }
