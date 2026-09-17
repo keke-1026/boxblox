@@ -70,7 +70,6 @@
         #portrait-warning .material-symbols-outlined { font-size: 48px; }
         @media (max-width: 768px) and (orientation: portrait) { #portrait-warning { display: flex; } }
 
-        /* ゲームUI画面 */
         #game-ui { display: none; position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: 1000; color: #333; }
         #game-ui .action-btn { color: #333; text-shadow: 0 0 3px rgba(255,255,255,0.8); }
         #crosshair { position: absolute; top: 50%; left: 50%; width: 4px; height: 4px; background: rgba(0,0,0,0.5); border-radius: 50%; transform: translate(-50%, -50%); }
@@ -99,7 +98,6 @@
 
     <div id="notification-container"></div>
 
-    <!-- HUB画面 -->
     <div id="hub-screen">
         <div class="hub-header">
             <h1>boxblox</h1>
@@ -141,7 +139,6 @@
         </div>
     </div>
 
-    <!-- パブリック作成 モーダル -->
     <div id="public-create-modal" class="modal">
         <div class="modal-content">
             <div style="font-size: 18px; text-align: center;">パブリック鯖を作成</div>
@@ -154,7 +151,6 @@
         </div>
     </div>
 
-    <!-- プライベート作成 モーダル -->
     <div id="private-create-modal" class="modal">
         <div class="modal-content">
             <div style="font-size: 18px; text-align: center;">プライベート鯖を作成</div>
@@ -171,7 +167,6 @@
         </div>
     </div>
 
-    <!-- パスワード入室 モーダル -->
     <div id="join-password-modal" class="modal">
         <div class="modal-content">
             <div style="font-size: 18px; text-align: center;">パスワードを入力</div>
@@ -181,7 +176,6 @@
         </div>
     </div>
 
-    <!-- サーバー解散確認モーダル -->
     <div id="disband-confirm-modal" class="modal">
         <div class="modal-content">
             <div style="font-size: 18px; text-align: center;">本当にサーバーを解散しますか？</div>
@@ -191,13 +185,11 @@
         </div>
     </div>
 
-    <!-- Tab プレイヤーリスト -->
     <div id="tab-player-list">
         <h2>現在のプレイヤー</h2>
         <ul id="tab-player-ul"></ul>
     </div>
 
-    <!-- ゲームUI画面 -->
     <div id="game-ui">
         <div id="crosshair"></div>
         <div id="top-info">
@@ -208,10 +200,7 @@
         
         <div id="top-right-menu">
             <button class="action-btn" id="admin-menu-btn" style="display: none;"><span class="material-symbols-outlined">settings</span></button>
-            <div style="display: flex; flex-direction: column; align-items: center; gap: 10px;">
-                <button class="action-btn" id="chat-toggle-btn"><span class="material-symbols-outlined">chat</span></button>
-                <button class="action-btn" id="notif-toggle-btn" title="通知設定"><span class="material-symbols-outlined">notifications_off</span></button>
-            </div>
+            <button class="action-btn" id="chat-toggle-btn"><span class="material-symbols-outlined">chat</span></button>
             <div id="chat-container">
                 <div id="chat-log"></div>
                 <div id="chat-input-area">
@@ -222,7 +211,7 @@
         </div>
 
         <div id="admin-panel">
-            <div style="font-weight: bold; border-bottom: 1px solid #ccc; padding-bottom: 5px;">管理者権限 (O+P)</div>
+            <div style="font-weight: bold; border-bottom: 1px solid #ccc; padding-bottom: 5px;">管理者</div>
             <button class="action-btn" id="toggle-chat-btn">チャット: ON</button>
             <button class="action-btn" id="toggle-hub-btn">Hub表示: ON</button>
             <button class="action-btn" id="disband-btn" style="color: #ff6b6b;"><span class="material-symbols-outlined">delete_forever</span> サーバー解散</button>
@@ -231,7 +220,6 @@
         </div>
     </div>
 
-    <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -257,49 +245,15 @@
             e.currentTarget.innerHTML = isDarkMode ? '<span class="material-symbols-outlined">light_mode</span>' : '<span class="material-symbols-outlined">dark_mode</span>';
         });
 
-        // ★実ブラウザ通知（notifPrefがsilentの時だけ発火）
-        function fireOsNotification(title, body) {
-            if (notifPref === 'silent' && 'Notification' in window && Notification.permission === 'granted') {
-                try { new Notification(title, { body: body, silent: true }); } catch (err) {}
-            }
-        }
-
         function showNotification(msg) {
             const container = document.getElementById('notification-container'), notif = document.createElement('div');
             notif.className = 'notification'; notif.innerText = msg; container.appendChild(notif);
             setTimeout(() => { if(notif.parentNode) notif.parentNode.removeChild(notif); }, 3000);
-            fireOsNotification('boxblox', msg);
         }
-
-        // ★通知設定（チャットボタンの下）：OFF（出さない） / silent（出す・無音）を切り替え
-        let notifPref = localStorage.getItem('boxblox_notif_pref') || 'off';
-        function updateNotifBtnUI() {
-            const btn = document.getElementById('notif-toggle-btn');
-            if (!btn) return;
-            btn.innerHTML = notifPref === 'silent'
-                ? '<span class="material-symbols-outlined">notifications_paused</span>'
-                : '<span class="material-symbols-outlined">notifications_off</span>';
-            btn.title = notifPref === 'silent' ? '通知: ON（無音）' : '通知: OFF';
-        }
-        updateNotifBtnUI();
-        document.getElementById('notif-toggle-btn').addEventListener('click', async () => {
-            if (notifPref === 'off') {
-                if (!('Notification' in window)) { showNotification('このブラウザでは通知に対応していません'); return; }
-                let perm = Notification.permission;
-                if (perm === 'default') { perm = await Notification.requestPermission(); }
-                if (perm !== 'granted') { showNotification('通知が許可されていません'); return; }
-                notifPref = 'silent';
-            } else {
-                notifPref = 'off';
-            }
-            localStorage.setItem('boxblox_notif_pref', notifPref);
-            updateNotifBtnUI();
-            showNotification(notifPref === 'silent' ? '通知: ON（無音）にしました' : '通知: OFFにしました');
-        });
         function formatTimeElapsed(ms) { const m = Math.floor(ms / 60000), s = Math.floor((ms % 60000) / 1000); return `${m}分${s}秒`; }
         function formatTimeHM(timestamp) { const date = new Date(timestamp); return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`; }
 
-        const firebaseConfig = { apiKey: "AIzaSyBjQWOa8y2UWgL81HvmEv_yiTCtTbk4cxU", authDomain: "keke-dev.firebaseapp.com", databaseURL: "https://keke-dev-default-rtdb.asia-southeast1.firebasedatabase.app", projectId: "keke-dev" };
+        const firebaseConfig = { apiKey: "AIzaSyC4SxpL41fFiJOL6OgeHhikJWi4zbRkifw", authDomain: "ke2-chat.firebaseapp.com", databaseURL: "https://ke2-chat-default-rtdb.asia-southeast1.firebasedatabase.app/", projectId: "ke2-chat" };
         firebase.initializeApp(firebaseConfig); 
         const db = firebase.database();
 
@@ -354,12 +308,10 @@
 
         function saveProfileInfo() {
             let rawName = document.getElementById('player-name').value.trim();
-            // Firebaseのエラーを防ぐため、使えない記号を_に自動変換
             myName = rawName.replace(/[.#$\[\]]/g, '_');
             localStorage.setItem('boxblox_name', rawName);
         }
 
-        // --- パブリック作成 ---
         document.getElementById('open-public-modal-btn').addEventListener('click', () => {
             saveProfileInfo();
             if (!myName) return showNotification('プレイヤー名を入力してください');
@@ -379,7 +331,6 @@
             triggerJoinFlow(target, 'public', roomData);
         });
 
-        // --- プライベート作成 ---
         document.getElementById('open-private-modal-btn').addEventListener('click', () => {
             saveProfileInfo();
             if (!myName) return showNotification('プレイヤー名を入力してください');
@@ -404,7 +355,6 @@
             triggerJoinFlow(target, 'private', roomData);
         });
 
-        // --- リストから参加 ---
         window.openJoinFlow = async function(roomId, type) {
             saveProfileInfo(); 
             if (!myName) return showNotification('プレイヤー名を入力してください');
@@ -503,7 +453,6 @@
             log.appendChild(div); log.scrollTop = log.scrollHeight;
         }
 
-        // Tabキーでプレイヤー一覧表示
         document.addEventListener('keydown', e => {
             if(gameStarted && e.code === 'Tab') {
                 e.preventDefault();
@@ -546,12 +495,9 @@
             const ambientLight = new THREE.AmbientLight(0xffffff, 1.5); scene.add(ambientLight); 
             const dirLight = new THREE.DirectionalLight(0xffffff, 0.8); dirLight.position.set(10, 20, 10); scene.add(dirLight); 
             
-            // ★グリッドの色を濃くして、白背景でもハッキリ見えるように修正
             scene.add(new THREE.GridHelper(200, 100, 0x888888, 0xdddddd));
 
             controls = new THREE.PointerLockControls(camera, document.body);
-            // ★iPad等（外部キーボード接続時含む）はSafariがPointer Lock API自体に非対応のため、
-            // 対応可否を検出してロック要求・キー入力ブロック判定の両方に使う
             const pointerLockSupported = typeof document.body.requestPointerLock === 'function';
             document.addEventListener('click', e => { 
                 if (window.innerWidth <= 768 || !pointerLockSupported || ['BUTTON','INPUT','SELECT'].includes(e.target.tagName)) return;
@@ -587,7 +533,6 @@
                 updateAdminList(); if (!initialLoad) appendSystemLog(`- ${snap.key} が退出しました`, "#f44336"); 
             });
 
-            // ★オブジェクトのオーナー同期システム★
             const boxes = [];
             objectsRef.on('child_added', snap => {
                 const d = snap.val(); let geo, shape;
@@ -597,7 +542,6 @@
                 const mesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: d.color })); scene.add(mesh);
                 const body = new CANNON.Body({ mass: 5, shape: shape }); 
                 body.position.set(d.x, d.y, d.z); 
-                // 回転データがあれば反映
                 if(d.qx !== undefined) body.quaternion.set(d.qx, d.qy, d.qz, d.qw);
                 world.addBody(body); 
                 boxes.push({ key: snap.key, mesh, body, owner: d.owner || '' });
@@ -608,7 +552,6 @@
                 const obj = boxes.find(b => b.key === snap.key);
                 if(obj) {
                     obj.owner = d.owner || '';
-                    // 自分がオーナーでない場合のみ、Firebaseの座標・回転に強制上書き（同期）
                     if(obj.owner !== myName) {
                         obj.body.position.set(d.x, d.y, d.z);
                         if(d.qx !== undefined) obj.body.quaternion.set(d.qx, d.qy, d.qz, d.qw);
@@ -623,7 +566,6 @@
                 const type = types[Math.floor(Math.random() * types.length)];
                 const colorNum = Math.floor(Math.random() * 0xffffff);
                 const pos = new THREE.Vector3(); camera.getWorldDirection(pos); pos.multiplyScalar(5).add(camera.position); pos.y += 2;
-                // スポーンさせた人が初期オーナーになる
                 objectsRef.push({ 
                     type: type, x: pos.x, y: pos.y, z: pos.z, 
                     qx: 0, qy: 0, qz: 0, qw: 1,
@@ -639,7 +581,6 @@
                     const obj = boxes.find(b => b.mesh === hit.object); 
                     if (obj) { 
                         heldBody = obj.body; heldBodyKey = obj.key; originalMass = heldBody.mass; heldBody.type = CANNON.Body.KINEMATIC; 
-                        // 掴んだ瞬間に自分がオーナー権を取得する
                         objectsRef.child(heldBodyKey).update({ owner: myName });
                         obj.owner = myName;
                     } 
@@ -706,7 +647,6 @@
                 if(e.code === 'KeyF') { fKeyActive = false; release(); }
             });
 
-            // ★左右矢印キー・画面ドラッグでの視点変更（Pointer Lockが使えない環境向け）
             const lookEuler = new THREE.Euler(0, 0, 0, 'YXZ');
             const LOOK_PITCH_LIMIT = Math.PI / 2 - 0.01;
             function applyLookDelta(deltaYaw, deltaPitch) {
@@ -738,13 +678,11 @@
 
             let chatEnabled = true; settingsRef.on('value', snap => { if(!snap.exists()) return; chatEnabled = snap.val().chatEnabled; document.getElementById('chat-input').placeholder = chatEnabled ? "チャット ( / で入力 )" : "チャットは無効化"; document.getElementById('chat-input').disabled = !chatEnabled; document.getElementById('chat-send').disabled = !chatEnabled; document.getElementById('toggle-chat-btn').innerHTML = chatEnabled ? 'チャット: ON' : 'チャット: OFF'; document.getElementById('toggle-hub-btn').innerHTML = snap.val().showPlayers ? 'Hub表示: ON' : 'Hub表示: OFF'; });
             
-            let chatInitialLoad = true; chatRef.once('value', () => { chatInitialLoad = false; });
             chatRef.on('child_added', snap => { 
                 const msg = snap.val(), log = document.getElementById('chat-log'), div = document.createElement('div');
                 div.className = "chat-msg-line";
                 div.innerHTML = `<span class="chat-time">[${formatTimeHM(msg.timestamp||Date.now())}]</span> <strong>${msg.sender}:</strong> ${msg.text}`; 
                 log.appendChild(div); log.scrollTop = log.scrollHeight; 
-                if (!chatInitialLoad && msg.sender !== myName) fireOsNotification(msg.sender, msg.text);
             });
             
             function sendChat() { const inp = document.getElementById('chat-input'); if(inp.value.trim() && chatEnabled) { chatRef.push({ sender: myName, text: inp.value.trim(), timestamp: firebase.database.ServerValue.TIMESTAMP }); inp.value = ''; } }
@@ -782,11 +720,9 @@
                     heldBody.velocity.set((targetPos.x - heldBody.position.x)*15, (targetPos.y - heldBody.position.y)*15, (targetPos.z - heldBody.position.z)*15);
                 }
 
-                // ★オブジェクトの全体同期処理（オーナーのみ送信）
                 if(time - lastObjSync > 100) {
                     boxes.forEach(b => {
                         if(b.owner === myName) {
-                            // 動いている時か、自分が掴んでいる時だけ座標を送信（通信量削減）
                             const isMoving = b.body.velocity.lengthSquared() > 0.01 || b.body.angularVelocity.lengthSquared() > 0.01;
                             if(isMoving || b.key === heldBodyKey) {
                                 objectsRef.child(b.key).update({ 
