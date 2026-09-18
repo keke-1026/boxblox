@@ -21,6 +21,11 @@
         .action-btn { background: none; border: none; font-size: 16px; cursor: pointer; text-align: left; padding: 0; display: inline-flex; align-items: center; gap: 5px; color: inherit; }
         .action-btn:hover { opacity: 0.7; }
         .action-btn:disabled { color: #ccc; cursor: not-allowed; }
+        .palette-btn { width: 36px; height: 36px; border-radius: 50%; border: 2px solid rgba(0,0,0,0.15); background: rgba(255,255,255,0.85); display: flex; align-items: center; justify-content: center; cursor: pointer; color: #333; padding: 0; transition: transform 0.15s, border-color 0.15s, box-shadow 0.15s; }
+        .palette-btn:hover { transform: scale(1.08); }
+        .palette-btn.selected { border-color: #4a90d9; box-shadow: 0 0 0 2px rgba(74,144,217,0.35); }
+        body.dark-mode .palette-btn { background: rgba(30,30,30,0.85); color: #eee; border-color: rgba(255,255,255,0.25); }
+        body.dark-mode .palette-btn.selected { border-color: #6fb1f0; box-shadow: 0 0 0 2px rgba(111,177,240,0.35); }
 
         body.dark-mode { background: #121212; color: #eee; }
         body.dark-mode input[type="text"], body.dark-mode input[type="password"] { color: #eee; border-bottom: 1px solid #555; }
@@ -70,6 +75,7 @@
         #portrait-warning .material-symbols-outlined { font-size: 48px; }
         @media (max-width: 768px) and (orientation: portrait) { #portrait-warning { display: flex; } }
 
+        /* ゲームUI画面 */
         #game-ui { display: none; position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: 1000; color: #333; }
         #game-ui .action-btn { color: #333; text-shadow: 0 0 3px rgba(255,255,255,0.8); }
         #crosshair { position: absolute; top: 50%; left: 50%; width: 4px; height: 4px; background: rgba(0,0,0,0.5); border-radius: 50%; transform: translate(-50%, -50%); }
@@ -98,6 +104,7 @@
 
     <div id="notification-container"></div>
 
+    <!-- HUB画面 -->
     <div id="hub-screen">
         <div class="hub-header">
             <h1>boxblox</h1>
@@ -132,13 +139,18 @@
                 <span class="footer-text">
                     WASD:移動 / Shift:ダッシュ / Space:ジャンプ / Ctrl:しゃがむ<br>
                     ←→↑↓ or 画面ドラッグ:視点変更 / 左クリック(またはF)長押し:物を掴む・離して投げる<br>
-                    B:ランダムで物を出す / M:退出 / /:チャット / Tab:プレイヤー一覧<br>
+                    B:選んだブロックを出す / N:出すブロックの種類を切り替え<br>
+                    R:掴んでいる物の向きを変更(クリックか再度Rで解除) / X:掴んでいる自分の物を削除<br>
+                    M:退出 / /:チャット / Tab:プレイヤー一覧<br>
                     ※プラベ鯖のみ2回ジャンプで空中浮遊 (Spaceで上昇、Ctrlで下降)
                 </span>
             </div>
         </div>
+
+        <div style="position: absolute; bottom: 12px; right: 18px; font-size: 11px; opacity: 0.45; pointer-events: none;">© 2026 boxblox / keke — v1.1.10</div>
     </div>
 
+    <!-- パブリック作成 モーダル -->
     <div id="public-create-modal" class="modal">
         <div class="modal-content">
             <div style="font-size: 18px; text-align: center;">パブリック鯖を作成</div>
@@ -151,6 +163,7 @@
         </div>
     </div>
 
+    <!-- プライベート作成 モーダル -->
     <div id="private-create-modal" class="modal">
         <div class="modal-content">
             <div style="font-size: 18px; text-align: center;">プライベート鯖を作成</div>
@@ -167,6 +180,7 @@
         </div>
     </div>
 
+    <!-- パスワード入室 モーダル -->
     <div id="join-password-modal" class="modal">
         <div class="modal-content">
             <div style="font-size: 18px; text-align: center;">パスワードを入力</div>
@@ -176,6 +190,7 @@
         </div>
     </div>
 
+    <!-- サーバー解散確認モーダル -->
     <div id="disband-confirm-modal" class="modal">
         <div class="modal-content">
             <div style="font-size: 18px; text-align: center;">本当にサーバーを解散しますか？</div>
@@ -185,16 +200,27 @@
         </div>
     </div>
 
+    <!-- Tab プレイヤーリスト -->
     <div id="tab-player-list">
         <h2>現在のプレイヤー</h2>
         <ul id="tab-player-ul"></ul>
     </div>
 
+    <!-- ゲームUI画面 -->
     <div id="game-ui">
         <div id="crosshair"></div>
         <div id="top-info">
             <div id="room-display" style="font-weight: bold;">Room: </div>
-            <button class="action-btn" id="spawn-btn" style="margin-top: 5px;"><span class="material-symbols-outlined">inventory_2</span> 物を出す (B)</button>
+            <div style="margin-top: 5px;">
+                <div style="font-size: 12px; opacity: 0.7; margin-bottom: 4px;">物を出す (B)</div>
+                <div id="spawn-palette" style="display: flex; gap: 8px; flex-wrap: wrap; max-width: 170px;">
+                    <button class="palette-btn selected" data-type="box" title="立方体"><span class="material-symbols-outlined">crop_square</span></button>
+                    <button class="palette-btn" data-type="block" title="縦ブロック"><span class="material-symbols-outlined">view_column</span></button>
+                    <button class="palette-btn" data-type="sphere" title="球"><span class="material-symbols-outlined">circle</span></button>
+                    <button class="palette-btn" data-type="cylinder" title="円柱"><span class="material-symbols-outlined">database</span></button>
+                    <button class="palette-btn" data-type="plate" title="板"><span class="material-symbols-outlined">crop_7_5</span></button>
+                </div>
+            </div>
             <button class="action-btn" id="leave-btn"><span class="material-symbols-outlined">logout</span> 退出する (M)</button>
         </div>
         
@@ -211,7 +237,7 @@
         </div>
 
         <div id="admin-panel">
-            <div style="font-weight: bold; border-bottom: 1px solid #ccc; padding-bottom: 5px;">管理者</div>
+            <div style="font-weight: bold; border-bottom: 1px solid #ccc; padding-bottom: 5px;">管理者権限 (O+P)</div>
             <button class="action-btn" id="toggle-chat-btn">チャット: ON</button>
             <button class="action-btn" id="toggle-hub-btn">Hub表示: ON</button>
             <button class="action-btn" id="disband-btn" style="color: #ff6b6b;"><span class="material-symbols-outlined">delete_forever</span> サーバー解散</button>
@@ -220,6 +246,7 @@
         </div>
     </div>
 
+    <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -253,7 +280,7 @@
         function formatTimeElapsed(ms) { const m = Math.floor(ms / 60000), s = Math.floor((ms % 60000) / 1000); return `${m}分${s}秒`; }
         function formatTimeHM(timestamp) { const date = new Date(timestamp); return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`; }
 
-        const firebaseConfig = { apiKey: "AIzaSyC4SxpL41fFiJOL6OgeHhikJWi4zbRkifw", authDomain: "ke2-chat.firebaseapp.com", databaseURL: "https://ke2-chat-default-rtdb.asia-southeast1.firebasedatabase.app/", projectId: "ke2-chat" };
+        const firebaseConfig = { apiKey: "AIzaSyBjQWOa8y2UWgL81HvmEv_yiTCtTbk4cxU", authDomain: "keke-dev.firebaseapp.com", databaseURL: "https://keke-dev-default-rtdb.asia-southeast1.firebasedatabase.app", projectId: "keke-dev" };
         firebase.initializeApp(firebaseConfig); 
         const db = firebase.database();
 
@@ -308,10 +335,12 @@
 
         function saveProfileInfo() {
             let rawName = document.getElementById('player-name').value.trim();
+            // Firebaseのエラーを防ぐため、使えない記号を_に自動変換
             myName = rawName.replace(/[.#$\[\]]/g, '_');
             localStorage.setItem('boxblox_name', rawName);
         }
 
+        // --- パブリック作成 ---
         document.getElementById('open-public-modal-btn').addEventListener('click', () => {
             saveProfileInfo();
             if (!myName) return showNotification('プレイヤー名を入力してください');
@@ -331,6 +360,7 @@
             triggerJoinFlow(target, 'public', roomData);
         });
 
+        // --- プライベート作成 ---
         document.getElementById('open-private-modal-btn').addEventListener('click', () => {
             saveProfileInfo();
             if (!myName) return showNotification('プレイヤー名を入力してください');
@@ -355,6 +385,7 @@
             triggerJoinFlow(target, 'private', roomData);
         });
 
+        // --- リストから参加 ---
         window.openJoinFlow = async function(roomId, type) {
             saveProfileInfo(); 
             if (!myName) return showNotification('プレイヤー名を入力してください');
@@ -453,6 +484,7 @@
             log.appendChild(div); log.scrollTop = log.scrollHeight;
         }
 
+        // Tabキーでプレイヤー一覧表示
         document.addEventListener('keydown', e => {
             if(gameStarted && e.code === 'Tab') {
                 e.preventDefault();
@@ -495,11 +527,34 @@
             const ambientLight = new THREE.AmbientLight(0xffffff, 1.5); scene.add(ambientLight); 
             const dirLight = new THREE.DirectionalLight(0xffffff, 0.8); dirLight.position.set(10, 20, 10); scene.add(dirLight); 
             
-            scene.add(new THREE.GridHelper(200, 100, 0x888888, 0xdddddd));
+            // ★グリッドの色を濃くして、白背景でもハッキリ見えるように修正
+            const MAP_HALF_SIZE = 38; // マップの端（以前の約2.5倍：合計76x76）
+            scene.add(new THREE.GridHelper(MAP_HALF_SIZE * 2, MAP_HALF_SIZE, 0x888888, 0xdddddd));
+
+            // ★マップの端（境界の壁）を追加
+            const WALL_HEIGHT = 25, WALL_THICK = 1;
+            const wallMaterial = new THREE.MeshStandardMaterial({ color: 0xb0b0b0, transparent: true, opacity: 0.35 });
+            function addBoundaryWall(x, z, w, d) {
+                const wallShape = new CANNON.Box(new CANNON.Vec3(w/2, WALL_HEIGHT/2, d/2));
+                const wallBody = new CANNON.Body({ mass: 0, shape: wallShape });
+                wallBody.position.set(x, WALL_HEIGHT/2, z);
+                world.addBody(wallBody);
+                const wallMesh = new THREE.Mesh(new THREE.BoxGeometry(w, WALL_HEIGHT, d), wallMaterial);
+                wallMesh.position.set(x, WALL_HEIGHT/2, z);
+                scene.add(wallMesh);
+            }
+            const mapEdge = MAP_HALF_SIZE + WALL_THICK / 2, mapSpan = MAP_HALF_SIZE * 2 + WALL_THICK * 2;
+            addBoundaryWall(0, -mapEdge, mapSpan, WALL_THICK); // 北
+            addBoundaryWall(0,  mapEdge, mapSpan, WALL_THICK); // 南
+            addBoundaryWall(-mapEdge, 0, WALL_THICK, mapSpan); // 西
+            addBoundaryWall( mapEdge, 0, WALL_THICK, mapSpan); // 東
 
             controls = new THREE.PointerLockControls(camera, document.body);
+            // ★iPad等（外部キーボード接続時含む）はSafariがPointer Lock API自体に非対応のため、
+            // 対応可否を検出してロック要求・キー入力ブロック判定の両方に使う
             const pointerLockSupported = typeof document.body.requestPointerLock === 'function';
             document.addEventListener('click', e => { 
+                rotateMode = false;
                 if (window.innerWidth <= 768 || !pointerLockSupported || ['BUTTON','INPUT','SELECT'].includes(e.target.tagName)) return;
                 if (!document.getElementById('admin-panel').contains(e.target) && !document.getElementById('chat-container').contains(e.target)) controls.lock(); 
             });
@@ -533,18 +588,33 @@
                 updateAdminList(); if (!initialLoad) appendSystemLog(`- ${snap.key} が退出しました`, "#f44336"); 
             });
 
+            // ★オブジェクトのオーナー同期システム★
             const boxes = [];
             objectsRef.on('child_added', snap => {
                 const d = snap.val(); let geo, shape;
                 if(d.type === 'sphere') { geo = new THREE.SphereGeometry(0.6, 16, 16); shape = new CANNON.Sphere(0.6); }
                 else if(d.type === 'block') { geo = new THREE.BoxGeometry(0.4, 2, 0.4); shape = new CANNON.Box(new CANNON.Vec3(0.2, 1, 0.2)); }
+                else if(d.type === 'cylinder') { geo = new THREE.CylinderGeometry(0.5, 0.5, 1, 16); shape = new CANNON.Cylinder(0.5, 0.5, 1, 16); }
+                else if(d.type === 'plate') { geo = new THREE.BoxGeometry(1.2, 0.15, 1.2); shape = new CANNON.Box(new CANNON.Vec3(0.6, 0.075, 0.6)); }
                 else { geo = new THREE.BoxGeometry(1,1,1); shape = new CANNON.Box(new CANNON.Vec3(0.5,0.5,0.5)); }
                 const mesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: d.color })); scene.add(mesh);
                 const body = new CANNON.Body({ mass: 5, shape: shape }); 
                 body.position.set(d.x, d.y, d.z); 
+                // 回転データがあれば反映
                 if(d.qx !== undefined) body.quaternion.set(d.qx, d.qy, d.qz, d.qw);
                 world.addBody(body); 
-                boxes.push({ key: snap.key, mesh, body, owner: d.owner || '' });
+                boxes.push({ key: snap.key, mesh, body, owner: d.owner || '', creator: d.creator || d.owner || '' });
+            });
+
+            objectsRef.on('child_removed', snap => {
+                const idx = boxes.findIndex(b => b.key === snap.key);
+                if (idx !== -1) {
+                    const obj = boxes[idx];
+                    scene.remove(obj.mesh);
+                    world.removeBody(obj.body);
+                    boxes.splice(idx, 1);
+                    if (heldBodyKey === snap.key) { heldBody = null; heldBodyKey = null; rotateMode = false; }
+                }
             });
 
             objectsRef.on('child_changed', snap => {
@@ -552,6 +622,7 @@
                 const obj = boxes.find(b => b.key === snap.key);
                 if(obj) {
                     obj.owner = d.owner || '';
+                    // 自分がオーナーでない場合のみ、Firebaseの座標・回転に強制上書き（同期）
                     if(obj.owner !== myName) {
                         obj.body.position.set(d.x, d.y, d.z);
                         if(d.qx !== undefined) obj.body.quaternion.set(d.qx, d.qy, d.qz, d.qw);
@@ -561,33 +632,76 @@
                 }
             });
             
-            function triggerSpawn() {
-                const types = ['box', 'sphere', 'block'];
-                const type = types[Math.floor(Math.random() * types.length)];
+            // ★好きなブロックを選んで出せるパレット（色はこれまで通りランダム）
+            const BLOCK_TYPE_ORDER = ['box', 'block', 'sphere', 'cylinder', 'plate'];
+            const BLOCK_TYPE_LABELS = { box: '立方体', block: '縦ブロック', sphere: '球', cylinder: '円柱', plate: '板' };
+            let selectedBlockType = localStorage.getItem('boxblox_block_type') || 'box';
+            if (!BLOCK_TYPE_ORDER.includes(selectedBlockType)) selectedBlockType = 'box';
+            function selectBlockType(type) {
+                selectedBlockType = type;
+                localStorage.setItem('boxblox_block_type', type);
+                document.querySelectorAll('.palette-btn').forEach(b => b.classList.toggle('selected', b.dataset.type === type));
+            }
+            // ★Nキーで出すブロックの種類を1個ずつ切り替え（出しはしない、選ぶだけ）
+            function cycleBlockType() {
+                const idx = BLOCK_TYPE_ORDER.indexOf(selectedBlockType);
+                const next = BLOCK_TYPE_ORDER[(idx + 1) % BLOCK_TYPE_ORDER.length];
+                selectBlockType(next);
+                showNotification('選択中: ' + BLOCK_TYPE_LABELS[next]);
+            }
+            function triggerSpawn(type) {
+                type = type || selectedBlockType;
                 const colorNum = Math.floor(Math.random() * 0xffffff);
                 const pos = new THREE.Vector3(); camera.getWorldDirection(pos); pos.multiplyScalar(5).add(camera.position); pos.y += 2;
+                // スポーンさせた人が初期オーナー兼、削除できる本人（creator）になる
                 objectsRef.push({ 
                     type: type, x: pos.x, y: pos.y, z: pos.z, 
                     qx: 0, qy: 0, qz: 0, qw: 1,
-                    color: colorNum, owner: myName 
+                    color: colorNum, owner: myName, creator: myName
                 });
             }
-            document.getElementById('spawn-btn').addEventListener('click', triggerSpawn);
+            document.querySelectorAll('.palette-btn').forEach(btn => {
+                btn.addEventListener('click', () => { selectBlockType(btn.dataset.type); triggerSpawn(btn.dataset.type); });
+            });
+            selectBlockType(selectedBlockType);
 
-            const raycaster = new THREE.Raycaster(), center = new THREE.Vector2(0, 0); let heldBody = null, originalMass = 0, heldBodyKey = null;
+            // ★自分が出したブロックだけ削除できる（Xキー、掴んだ状態で）
+            function deleteHeldObject() {
+                if (!heldBody) return;
+                const obj = boxes.find(b => b.key === heldBodyKey);
+                if (!obj) return;
+                if (obj.creator !== myName) { showNotification('自分が出したブロックだけ削除できます'); return; }
+                objectsRef.child(heldBodyKey).remove(); // 後片付けはchild_removedリスナーが行う
+            }
+
+            const raycaster = new THREE.Raycaster(), center = new THREE.Vector2(0, 0); let heldBody = null, originalMass = 0, heldBodyKey = null, rotateMode = false;
             function grab() { 
                 raycaster.setFromCamera(center, camera); const hit = raycaster.intersectObjects(boxes.map(b => b.mesh))[0]; 
                 if (hit && hit.distance < 8) { 
                     const obj = boxes.find(b => b.mesh === hit.object); 
                     if (obj) { 
                         heldBody = obj.body; heldBodyKey = obj.key; originalMass = heldBody.mass; heldBody.type = CANNON.Body.KINEMATIC; 
+                        heldBody.velocity.set(0,0,0); heldBody.angularVelocity.set(0,0,0);
+                        // 掴んだ瞬間に自分がオーナー権を取得する
                         objectsRef.child(heldBodyKey).update({ owner: myName });
                         obj.owner = myName;
                     } 
                 } 
             }
-            function release() { if (heldBody) { heldBody.type = CANNON.Body.DYNAMIC; heldBody.mass = originalMass; heldBody.updateMassProperties(); heldBody = null; heldBodyKey = null; } }
+            function release() { if (heldBody) { heldBody.type = CANNON.Body.DYNAMIC; heldBody.mass = originalMass; heldBody.updateMassProperties(); heldBody = null; heldBodyKey = null; } rotateMode = false; }
             document.addEventListener('mousedown', e => { if (controls.isLocked && e.button===0) grab(); }); document.addEventListener('mouseup', e => { if (e.button===0) release(); });
+            // ★向き変更モード（Rキー）：held中のみ有効。実マウスの移動でも回せるように
+            function toggleRotateMode() {
+                if (!heldBody) { showNotification('ブロックを持っていません'); return; }
+                rotateMode = !rotateMode;
+                if (rotateMode) {
+                    if (controls.isLocked) controls.unlock();
+                    showNotification('向き変更モード：クリックか再度Rで解除');
+                } else {
+                    showNotification('通常モードに戻りました');
+                }
+            }
+            document.addEventListener('mousemove', e => { if (rotateMode && heldBody) applyLookDelta(e.movementX * 0.002, e.movementY * 0.002); });
             
             let canJump = false, isCrouching = false, isFlying = false, lastJumpTime = 0;
             
@@ -631,6 +745,10 @@
                 if(e.code === 'Space' && !moveJump) { moveJump = true; handleJump(); }
                 if(e.code === 'KeyF' && !fKeyActive) { fKeyActive = true; grab(); }
                 if(e.code === 'KeyB') triggerSpawn();
+                if(e.code === 'KeyN' && !e.repeat) cycleBlockType();
+                if(e.code === 'KeyR' && !e.repeat) toggleRotateMode();
+                if(e.code === 'KeyX' && !e.repeat) deleteHeldObject();
+                if(e.code === 'Escape') rotateMode = false;
                 if(e.code === 'KeyM') document.getElementById('leave-btn').click();
             });
             document.addEventListener('keyup', e => { 
@@ -647,9 +765,22 @@
                 if(e.code === 'KeyF') { fKeyActive = false; release(); }
             });
 
+            // ★左右矢印キー・画面ドラッグでの視点変更（Pointer Lockが使えない環境向け）
+            // ★向き変更モード中は、同じ入力（矢印キー・ドラッグ・マウス）で持っている物を回転させる
             const lookEuler = new THREE.Euler(0, 0, 0, 'YXZ');
+            const heldRotEuler = new THREE.Euler(0, 0, 0, 'YXZ');
+            const tmpHeldQuat = new THREE.Quaternion();
             const LOOK_PITCH_LIMIT = Math.PI / 2 - 0.01;
             function applyLookDelta(deltaYaw, deltaPitch) {
+                if (rotateMode && heldBody) {
+                    tmpHeldQuat.set(heldBody.quaternion.x, heldBody.quaternion.y, heldBody.quaternion.z, heldBody.quaternion.w);
+                    heldRotEuler.setFromQuaternion(tmpHeldQuat);
+                    heldRotEuler.y -= deltaYaw;
+                    heldRotEuler.x -= deltaPitch;
+                    tmpHeldQuat.setFromEuler(heldRotEuler);
+                    heldBody.quaternion.set(tmpHeldQuat.x, tmpHeldQuat.y, tmpHeldQuat.z, tmpHeldQuat.w);
+                    return;
+                }
                 lookEuler.setFromQuaternion(camera.quaternion);
                 lookEuler.y -= deltaYaw;
                 lookEuler.x -= deltaPitch;
@@ -720,9 +851,11 @@
                     heldBody.velocity.set((targetPos.x - heldBody.position.x)*15, (targetPos.y - heldBody.position.y)*15, (targetPos.z - heldBody.position.z)*15);
                 }
 
+                // ★オブジェクトの全体同期処理（オーナーのみ送信）
                 if(time - lastObjSync > 100) {
                     boxes.forEach(b => {
                         if(b.owner === myName) {
+                            // 動いている時か、自分が掴んでいる時だけ座標を送信（通信量削減）
                             const isMoving = b.body.velocity.lengthSquared() > 0.01 || b.body.angularVelocity.lengthSquared() > 0.01;
                             if(isMoving || b.key === heldBodyKey) {
                                 objectsRef.child(b.key).update({ 
