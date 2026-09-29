@@ -21,11 +21,10 @@
         .action-btn { background: none; border: none; font-size: 16px; cursor: pointer; text-align: left; padding: 0; display: inline-flex; align-items: center; gap: 5px; color: inherit; }
         .action-btn:hover { opacity: 0.7; }
         .action-btn:disabled { color: #ccc; cursor: not-allowed; }
-        .palette-btn { width: 36px; height: 36px; border-radius: 50%; border: 2px solid rgba(0,0,0,0.15); background: rgba(255,255,255,0.85); display: flex; align-items: center; justify-content: center; cursor: pointer; color: #333; padding: 0; transition: transform 0.15s, border-color 0.15s, box-shadow 0.15s; }
-        .palette-btn:hover { transform: scale(1.08); }
-        .palette-btn.selected { border-color: #4a90d9; box-shadow: 0 0 0 2px rgba(74,144,217,0.35); }
-        body.dark-mode .palette-btn { background: rgba(30,30,30,0.85); color: #eee; border-color: rgba(255,255,255,0.25); }
-        body.dark-mode .palette-btn.selected { border-color: #6fb1f0; box-shadow: 0 0 0 2px rgba(111,177,240,0.35); }
+        #block-select { border-radius: 20px; border: 2px solid rgba(0,0,0,0.15); padding: 6px 14px; font-size: 14px; background: rgba(255,255,255,0.85); color: #333; cursor: pointer; }
+        body.dark-mode #block-select { background: rgba(30,30,30,0.85); color: #eee; border-color: rgba(255,255,255,0.25); }
+        #held-controls-hint { position: absolute; top: 50%; right: 20px; transform: translateY(-50%); background: transparent; padding: 12px 16px; font-size: 12px; line-height: 1.9; pointer-events: none; color: #333; text-shadow: 0 0 4px rgba(255,255,255,0.9), 0 0 4px rgba(255,255,255,0.9); }
+        body.dark-mode #held-controls-hint { color: #eee; text-shadow: 0 0 4px rgba(0,0,0,0.9), 0 0 4px rgba(0,0,0,0.9); }
 
         body.dark-mode { background: #121212; color: #eee; }
         body.dark-mode input[type="text"], body.dark-mode input[type="password"] { color: #eee; border-bottom: 1px solid #555; }
@@ -75,7 +74,6 @@
         #portrait-warning .material-symbols-outlined { font-size: 48px; }
         @media (max-width: 768px) and (orientation: portrait) { #portrait-warning { display: flex; } }
 
-        /* ゲームUI画面 */
         #game-ui { display: none; position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: 1000; color: #333; }
         #game-ui .action-btn { color: #333; text-shadow: 0 0 3px rgba(255,255,255,0.8); }
         #crosshair { position: absolute; top: 50%; left: 50%; width: 4px; height: 4px; background: rgba(0,0,0,0.5); border-radius: 50%; transform: translate(-50%, -50%); }
@@ -104,7 +102,6 @@
 
     <div id="notification-container"></div>
 
-    <!-- HUB画面 -->
     <div id="hub-screen">
         <div class="hub-header">
             <h1>boxblox</h1>
@@ -117,7 +114,7 @@
 
         <div class="creation-area">
             <div class="input-group">
-                <span class="input-label">プレイヤー名 (必須) ※自動で使えない記号は除外されます</span>
+                <span class="input-label">プレイヤー名</span>
                 <input type="text" id="player-name" maxlength="15" placeholder="名前を入力">
             </div>
 
@@ -129,7 +126,7 @@
             </div>
             <div class="creation-row">
                 <button class="action-btn" id="open-private-modal-btn"><span class="material-symbols-outlined">lock</span> プライベート鯖を作成</button>
-                <span class="creation-info">(15人まで)</span>
+                <span class="creation-info">(全体合計15人まで)</span>
             </div>
         </div>
 
@@ -138,19 +135,21 @@
                 <span>遊び方 (How to play)</span>
                 <span class="footer-text">
                     WASD:移動 / Shift:ダッシュ / Space:ジャンプ / Ctrl:しゃがむ<br>
-                    ←→↑↓ or 画面ドラッグ:視点変更 / 左クリック(またはF)長押し:物を掴む・離して投げる<br>
+                    ←→↑↓ or 画面ドラッグ:視点変更 / 左クリック(またはF)長押し:物を掴む・投げる<br>
                     B:選んだブロックを出す / N:出すブロックの種類を切り替え<br>
-                    R:掴んでいる物の向きを変更(クリックか再度Rで解除) / X:掴んでいる自分の物を削除<br>
+                    R:掴んでいる物の向きを変更(クリックか再度Rで解除) / X:掴んでいる自分の物を削除 / C:近くのブロックと連結<br>
                     M:退出 / /:チャット / Tab:プレイヤー一覧<br>
-                    ※プラベ鯖のみ2回ジャンプで空中浮遊 (Spaceで上昇、Ctrlで下降)
+                    プライベート鯖のみ2回ジャンプで空中浮遊 (Spaceで上昇、Ctrlで下降)
                 </span>
             </div>
         </div>
 
-        <div style="position: absolute; bottom: 12px; right: 18px; font-size: 11px; opacity: 0.45; pointer-events: none;">この作品は､「CC BY-NC-SA 4.0」によってライセンスが付与されています / © keke — v1.2.0</div>
+        <div style="position: absolute; bottom: 12px; right: 18px; font-size: 11px; opacity: 0.6; text-align: right; line-height: 1.7;">
+            © 2026 boxblox — v1.2.1<br>
+            <a href="https://github.com/keke-1026/boxblox" target="_blank" rel="noopener" style="color: inherit; text-decoration: underline;">GitHub</a> ・ <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank" rel="noopener" style="color: inherit; text-decoration: underline;">この作品は CC BY-NC-SA 4.0 です</a>
+        </div>
     </div>
 
-    <!-- パブリック作成 モーダル -->
     <div id="public-create-modal" class="modal">
         <div class="modal-content">
             <div style="font-size: 18px; text-align: center;">パブリック鯖を作成</div>
@@ -163,7 +162,6 @@
         </div>
     </div>
 
-    <!-- プライベート作成 モーダル -->
     <div id="private-create-modal" class="modal">
         <div class="modal-content">
             <div style="font-size: 18px; text-align: center;">プライベート鯖を作成</div>
@@ -180,7 +178,6 @@
         </div>
     </div>
 
-    <!-- パスワード入室 モーダル -->
     <div id="join-password-modal" class="modal">
         <div class="modal-content">
             <div style="font-size: 18px; text-align: center;">パスワードを入力</div>
@@ -190,7 +187,6 @@
         </div>
     </div>
 
-    <!-- サーバー解散確認モーダル -->
     <div id="disband-confirm-modal" class="modal">
         <div class="modal-content">
             <div style="font-size: 18px; text-align: center;">本当にサーバーを解散しますか？</div>
@@ -200,28 +196,27 @@
         </div>
     </div>
 
-    <!-- Tab プレイヤーリスト -->
     <div id="tab-player-list">
         <h2>現在のプレイヤー</h2>
         <ul id="tab-player-ul"></ul>
     </div>
 
-    <!-- ゲームUI画面 -->
     <div id="game-ui">
         <div id="crosshair"></div>
         <div id="top-info">
             <div id="room-display" style="font-weight: bold;">Room: </div>
             <div style="margin-top: 5px;">
-                <div style="font-size: 12px; opacity: 0.7; margin-bottom: 4px;">物を出す (B)</div>
-                <div id="spawn-palette" style="display: flex; gap: 8px; flex-wrap: wrap; max-width: 170px;">
-                    <button class="palette-btn selected" data-type="box" title="立方体"><span class="material-symbols-outlined">crop_square</span></button>
-                    <button class="palette-btn" data-type="block" title="縦ブロック"><span class="material-symbols-outlined">view_column</span></button>
-                    <button class="palette-btn" data-type="sphere" title="球"><span class="material-symbols-outlined">circle</span></button>
-                    <button class="palette-btn" data-type="cylinder" title="円柱"><span class="material-symbols-outlined">database</span></button>
-                    <button class="palette-btn" data-type="plate" title="板"><span class="material-symbols-outlined">crop_7_5</span></button>
-                </div>
+                <div style="font-size: 12px; opacity: 0.7; margin-bottom: 4px;">物を出す</div>
+                <select id="block-select" title="出すブロックの種類"></select>
             </div>
-            <button class="action-btn" id="leave-btn"><span class="material-symbols-outlined">logout</span> 退出する (M)</button>
+            <button class="action-btn" id="leave-btn"><span class="material-symbols-outlined">logout</span> 退出する</button>
+        </div>
+
+        <div id="held-controls-hint" style="display: none;">
+            <div>R：向きを変更</div>
+            <div>X：削除(自分の物のみ)</div>
+            <div>C：近くのブロックと連結</div>
+            <div>離す：その場に置く</div>
         </div>
         
         <div id="top-right-menu">
@@ -237,7 +232,7 @@
         </div>
 
         <div id="admin-panel">
-            <div style="font-weight: bold; border-bottom: 1px solid #ccc; padding-bottom: 5px;">管理者権限 (O+P)</div>
+            <div style="font-weight: bold; border-bottom: 1px solid #ccc; padding-bottom: 5px;">管理者権限</div>
             <button class="action-btn" id="toggle-chat-btn">チャット: ON</button>
             <button class="action-btn" id="toggle-hub-btn">Hub表示: ON</button>
             <button class="action-btn" id="disband-btn" style="color: #ff6b6b;"><span class="material-symbols-outlined">delete_forever</span> サーバー解散</button>
@@ -246,7 +241,6 @@
         </div>
     </div>
 
-    <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -335,12 +329,10 @@
 
         function saveProfileInfo() {
             let rawName = document.getElementById('player-name').value.trim();
-            // Firebaseのエラーを防ぐため、使えない記号を_に自動変換
             myName = rawName.replace(/[.#$\[\]]/g, '_');
             localStorage.setItem('boxblox_name', rawName);
         }
 
-        // --- パブリック作成 ---
         document.getElementById('open-public-modal-btn').addEventListener('click', () => {
             saveProfileInfo();
             if (!myName) return showNotification('プレイヤー名を入力してください');
@@ -360,7 +352,6 @@
             triggerJoinFlow(target, 'public', roomData);
         });
 
-        // --- プライベート作成 ---
         document.getElementById('open-private-modal-btn').addEventListener('click', () => {
             saveProfileInfo();
             if (!myName) return showNotification('プレイヤー名を入力してください');
@@ -385,7 +376,6 @@
             triggerJoinFlow(target, 'private', roomData);
         });
 
-        // --- リストから参加 ---
         window.openJoinFlow = async function(roomId, type) {
             saveProfileInfo(); 
             if (!myName) return showNotification('プレイヤー名を入力してください');
@@ -484,7 +474,6 @@
             log.appendChild(div); log.scrollTop = log.scrollHeight;
         }
 
-        // Tabキーでプレイヤー一覧表示
         document.addEventListener('keydown', e => {
             if(gameStarted && e.code === 'Tab') {
                 e.preventDefault();
@@ -527,11 +516,9 @@
             const ambientLight = new THREE.AmbientLight(0xffffff, 1.5); scene.add(ambientLight); 
             const dirLight = new THREE.DirectionalLight(0xffffff, 0.8); dirLight.position.set(10, 20, 10); scene.add(dirLight); 
             
-            // ★グリッドの色を濃くして、白背景でもハッキリ見えるように修正
-            const MAP_HALF_SIZE = 38; // マップの端（以前の約2.5倍：合計76x76）
+            const MAP_HALF_SIZE = 38;
             scene.add(new THREE.GridHelper(MAP_HALF_SIZE * 2, MAP_HALF_SIZE, 0x888888, 0xdddddd));
 
-            // ★マップの端（境界の壁）を追加
             const WALL_HEIGHT = 25, WALL_THICK = 1;
             const wallMaterial = new THREE.MeshStandardMaterial({ color: 0xb0b0b0, transparent: true, opacity: 0.35 });
             function addBoundaryWall(x, z, w, d) {
@@ -544,17 +531,16 @@
                 scene.add(wallMesh);
             }
             const mapEdge = MAP_HALF_SIZE + WALL_THICK / 2, mapSpan = MAP_HALF_SIZE * 2 + WALL_THICK * 2;
-            addBoundaryWall(0, -mapEdge, mapSpan, WALL_THICK); // 北
-            addBoundaryWall(0,  mapEdge, mapSpan, WALL_THICK); // 南
-            addBoundaryWall(-mapEdge, 0, WALL_THICK, mapSpan); // 西
-            addBoundaryWall( mapEdge, 0, WALL_THICK, mapSpan); // 東
+            addBoundaryWall(0, -mapEdge, mapSpan, WALL_THICK);
+            addBoundaryWall(0,  mapEdge, mapSpan, WALL_THICK);
+            addBoundaryWall(-mapEdge, 0, WALL_THICK, mapSpan); 
+            addBoundaryWall( mapEdge, 0, WALL_THICK, mapSpan);
 
             controls = new THREE.PointerLockControls(camera, document.body);
-            // ★iPad等（外部キーボード接続時含む）はSafariがPointer Lock API自体に非対応のため、
-            // 対応可否を検出してロック要求・キー入力ブロック判定の両方に使う
             const pointerLockSupported = typeof document.body.requestPointerLock === 'function';
             document.addEventListener('click', e => { 
-                rotateMode = false;
+                if (touchDragDistance < 10) rotateMode = false;
+                touchDragDistance = 0;
                 if (window.innerWidth <= 768 || !pointerLockSupported || ['BUTTON','INPUT','SELECT'].includes(e.target.tagName)) return;
                 if (!document.getElementById('admin-panel').contains(e.target) && !document.getElementById('chat-container').contains(e.target)) controls.lock(); 
             });
@@ -588,32 +574,52 @@
                 updateAdminList(); if (!initialLoad) appendSystemLog(`- ${snap.key} が退出しました`, "#f44336"); 
             });
 
-            // ★オブジェクトのオーナー同期システム★
             const boxes = [];
+            // ブロックたちだぜ～☆
+            const BLOCK_DEFS = {
+                box:         { label: '立方体',       geo: () => new THREE.BoxGeometry(1, 1, 1),        shape: () => new CANNON.Box(new CANNON.Vec3(0.5, 0.5, 0.5)) },
+                smallbox:    { label: '小さい立方体',   geo: () => new THREE.BoxGeometry(0.5, 0.5, 0.5),   shape: () => new CANNON.Box(new CANNON.Vec3(0.25, 0.25, 0.25)) },
+                bigbox:      { label: '大きい立方体',   geo: () => new THREE.BoxGeometry(1.6, 1.6, 1.6),   shape: () => new CANNON.Box(new CANNON.Vec3(0.8, 0.8, 0.8)) },
+                block:       { label: '縦ブロック',     geo: () => new THREE.BoxGeometry(0.4, 2, 0.4),     shape: () => new CANNON.Box(new CANNON.Vec3(0.2, 1, 0.2)) },
+                plank:       { label: '横ブロック',     geo: () => new THREE.BoxGeometry(1.8, 0.3, 0.4),   shape: () => new CANNON.Box(new CANNON.Vec3(0.9, 0.15, 0.2)) },
+                wall:        { label: '壁パネル',       geo: () => new THREE.BoxGeometry(1.8, 1.8, 0.2),   shape: () => new CANNON.Box(new CANNON.Vec3(0.9, 0.9, 0.1)) },
+                plate:       { label: '板',            geo: () => new THREE.BoxGeometry(1.2, 0.15, 1.2),  shape: () => new CANNON.Box(new CANNON.Vec3(0.6, 0.075, 0.6)) },
+                sphere:      { label: '球',            geo: () => new THREE.SphereGeometry(0.6, 16, 16),  shape: () => new CANNON.Sphere(0.6) },
+                smallsphere: { label: '小さい球',       geo: () => new THREE.SphereGeometry(0.3, 16, 16),  shape: () => new CANNON.Sphere(0.3) },
+                cylinder:    { label: '円柱',           geo: () => new THREE.CylinderGeometry(0.5, 0.5, 1, 16), shape: () => new CANNON.Cylinder(0.5, 0.5, 1, 16) },
+            };
+            const BLOCK_TYPE_ORDER = Object.keys(BLOCK_DEFS);
+
+            function ensureConstraint(objA, objB) {
+                const exists = world.constraints.some(c => (c.bodyA === objA.body && c.bodyB === objB.body) || (c.bodyA === objB.body && c.bodyB === objA.body));
+                if (exists) return;
+                world.addConstraint(new CANNON.LockConstraint(objA.body, objB.body));
+            }
+
             objectsRef.on('child_added', snap => {
-                const d = snap.val(); let geo, shape;
-                if(d.type === 'sphere') { geo = new THREE.SphereGeometry(0.6, 16, 16); shape = new CANNON.Sphere(0.6); }
-                else if(d.type === 'block') { geo = new THREE.BoxGeometry(0.4, 2, 0.4); shape = new CANNON.Box(new CANNON.Vec3(0.2, 1, 0.2)); }
-                else if(d.type === 'cylinder') { geo = new THREE.CylinderGeometry(0.5, 0.5, 1, 16); shape = new CANNON.Cylinder(0.5, 0.5, 1, 16); }
-                else if(d.type === 'plate') { geo = new THREE.BoxGeometry(1.2, 0.15, 1.2); shape = new CANNON.Box(new CANNON.Vec3(0.6, 0.075, 0.6)); }
-                else { geo = new THREE.BoxGeometry(1,1,1); shape = new CANNON.Box(new CANNON.Vec3(0.5,0.5,0.5)); }
+                const d = snap.val();
+                const def = BLOCK_DEFS[d.type] || BLOCK_DEFS.box;
+                const geo = def.geo(), shape = def.shape();
                 const mesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: d.color })); scene.add(mesh);
                 const body = new CANNON.Body({ mass: 5, shape: shape }); 
                 body.position.set(d.x, d.y, d.z); 
-                // 回転データがあれば反映
                 if(d.qx !== undefined) body.quaternion.set(d.qx, d.qy, d.qz, d.qw);
                 world.addBody(body); 
-                boxes.push({ key: snap.key, mesh, body, owner: d.owner || '', creator: d.creator || d.owner || '' });
+                const newObj = { key: snap.key, mesh, body, owner: d.owner || '', creator: d.creator || d.owner || '', connections: d.connections || [] };
+                boxes.push(newObj);
+                newObj.connections.forEach(k => { const other = boxes.find(b => b.key === k); if (other) ensureConstraint(newObj, other); });
+                boxes.forEach(other => { if (other !== newObj && (other.connections || []).includes(snap.key)) ensureConstraint(newObj, other); });
             });
 
             objectsRef.on('child_removed', snap => {
                 const idx = boxes.findIndex(b => b.key === snap.key);
                 if (idx !== -1) {
                     const obj = boxes[idx];
+                    world.constraints.slice().forEach(c => { if (c.bodyA === obj.body || c.bodyB === obj.body) world.removeConstraint(c); });
                     scene.remove(obj.mesh);
                     world.removeBody(obj.body);
                     boxes.splice(idx, 1);
-                    if (heldBodyKey === snap.key) { heldBody = null; heldBodyKey = null; rotateMode = false; }
+                    if (heldBodyKey === snap.key) { heldBody = null; heldBodyKey = null; rotateMode = false; updateHeldHint(); }
                 }
             });
 
@@ -622,7 +628,10 @@
                 const obj = boxes.find(b => b.key === snap.key);
                 if(obj) {
                     obj.owner = d.owner || '';
-                    // 自分がオーナーでない場合のみ、Firebaseの座標・回転に強制上書き（同期）
+                    if (d.connections) {
+                        obj.connections = d.connections;
+                        d.connections.forEach(k => { const other = boxes.find(b => b.key === k); if (other) ensureConstraint(obj, other); });
+                    }
                     if(obj.owner !== myName) {
                         obj.body.position.set(d.x, d.y, d.z);
                         if(d.qx !== undefined) obj.body.quaternion.set(d.qx, d.qy, d.qz, d.qw);
@@ -632,46 +641,78 @@
                 }
             });
             
-            // ★好きなブロックを選んで出せるパレット（色はこれまで通りランダム）
-            const BLOCK_TYPE_ORDER = ['box', 'block', 'sphere', 'cylinder', 'plate'];
-            const BLOCK_TYPE_LABELS = { box: '立方体', block: '縦ブロック', sphere: '球', cylinder: '円柱', plate: '板' };
+            const blockSelect = document.getElementById('block-select');
+            BLOCK_TYPE_ORDER.forEach(type => {
+                const opt = document.createElement('option');
+                opt.value = type; opt.textContent = BLOCK_DEFS[type].label;
+                blockSelect.appendChild(opt);
+            });
             let selectedBlockType = localStorage.getItem('boxblox_block_type') || 'box';
             if (!BLOCK_TYPE_ORDER.includes(selectedBlockType)) selectedBlockType = 'box';
             function selectBlockType(type) {
                 selectedBlockType = type;
                 localStorage.setItem('boxblox_block_type', type);
-                document.querySelectorAll('.palette-btn').forEach(b => b.classList.toggle('selected', b.dataset.type === type));
+                blockSelect.value = type;
             }
-            // ★Nキーで出すブロックの種類を1個ずつ切り替え（出しはしない、選ぶだけ）
+            selectBlockType(selectedBlockType);
+            blockSelect.addEventListener('change', () => selectBlockType(blockSelect.value));
             function cycleBlockType() {
                 const idx = BLOCK_TYPE_ORDER.indexOf(selectedBlockType);
                 const next = BLOCK_TYPE_ORDER[(idx + 1) % BLOCK_TYPE_ORDER.length];
                 selectBlockType(next);
-                showNotification('選択中: ' + BLOCK_TYPE_LABELS[next]);
+                showNotification('選択中: ' + BLOCK_DEFS[next].label);
             }
             function triggerSpawn(type) {
                 type = type || selectedBlockType;
                 const colorNum = Math.floor(Math.random() * 0xffffff);
                 const pos = new THREE.Vector3(); camera.getWorldDirection(pos); pos.multiplyScalar(5).add(camera.position); pos.y += 2;
-                // スポーンさせた人が初期オーナー兼、削除できる本人（creator）になる
                 objectsRef.push({ 
                     type: type, x: pos.x, y: pos.y, z: pos.z, 
                     qx: 0, qy: 0, qz: 0, qw: 1,
                     color: colorNum, owner: myName, creator: myName
                 });
             }
-            document.querySelectorAll('.palette-btn').forEach(btn => {
-                btn.addEventListener('click', () => { selectBlockType(btn.dataset.type); triggerSpawn(btn.dataset.type); });
-            });
-            selectBlockType(selectedBlockType);
 
-            // ★自分が出したブロックだけ削除できる（Xキー、掴んだ状態で）
             function deleteHeldObject() {
                 if (!heldBody) return;
                 const obj = boxes.find(b => b.key === heldBodyKey);
                 if (!obj) return;
                 if (obj.creator !== myName) { showNotification('自分が出したブロックだけ削除できます'); return; }
                 objectsRef.child(heldBodyKey).remove(); // 後片付けはchild_removedリスナーが行う
+            }
+
+            function connectHeldObject() {
+                if (!heldBody) return;
+                const obj = boxes.find(b => b.key === heldBodyKey);
+                if (!obj) return;
+                let nearest = null;
+                for (const c of world.contacts) {
+                    let otherBody = null;
+                    if (c.bi === heldBody) otherBody = c.bj;
+                    else if (c.bj === heldBody) otherBody = c.bi;
+                    if (otherBody) {
+                        const found = boxes.find(b => b.body === otherBody);
+                        if (found) { nearest = found; break; }
+                    }
+                }
+                if (!nearest) { showNotification('ブロックを触れさせてから連結してください'); return; }
+
+                ensureConstraint(obj, nearest);
+
+                obj.connections = obj.connections || [];
+                if (!obj.connections.includes(nearest.key)) obj.connections.push(nearest.key);
+                nearest.connections = nearest.connections || [];
+                if (!nearest.connections.includes(obj.key)) nearest.connections.push(obj.key);
+                nearest.owner = myName;
+
+                objectsRef.child(obj.key).update({ connections: obj.connections });
+                objectsRef.child(nearest.key).update({ connections: nearest.connections, owner: myName });
+
+                showNotification('ブロックを連結しました');
+            }
+
+            function updateHeldHint() {
+                document.getElementById('held-controls-hint').style.display = heldBody ? 'block' : 'none';
             }
 
             const raycaster = new THREE.Raycaster(), center = new THREE.Vector2(0, 0); let heldBody = null, originalMass = 0, heldBodyKey = null, rotateMode = false;
@@ -682,17 +723,16 @@
                     if (obj) { 
                         heldBody = obj.body; heldBodyKey = obj.key; originalMass = heldBody.mass; heldBody.type = CANNON.Body.KINEMATIC; 
                         heldBody.velocity.set(0,0,0); heldBody.angularVelocity.set(0,0,0);
-                        // 掴んだ瞬間に自分がオーナー権を取得する
                         objectsRef.child(heldBodyKey).update({ owner: myName });
                         obj.owner = myName;
+                        updateHeldHint();
                     } 
                 } 
             }
-            function release() { if (heldBody) { heldBody.type = CANNON.Body.DYNAMIC; heldBody.mass = originalMass; heldBody.updateMassProperties(); heldBody = null; heldBodyKey = null; } rotateMode = false; }
+            function release() { if (heldBody) { heldBody.type = CANNON.Body.DYNAMIC; heldBody.mass = originalMass; heldBody.updateMassProperties(); heldBody = null; heldBodyKey = null; } rotateMode = false; updateHeldHint(); }
             document.addEventListener('mousedown', e => { if (controls.isLocked && e.button===0) grab(); }); document.addEventListener('mouseup', e => { if (e.button===0) release(); });
-            // ★向き変更モード（Rキー）：held中のみ有効。実マウスの移動でも回せるように
             function toggleRotateMode() {
-                if (!heldBody) { showNotification('ブロックを持っていません'); return; }
+                if (!heldBody) return;
                 rotateMode = !rotateMode;
                 if (rotateMode) {
                     if (controls.isLocked) controls.unlock();
@@ -748,6 +788,7 @@
                 if(e.code === 'KeyN' && !e.repeat) cycleBlockType();
                 if(e.code === 'KeyR' && !e.repeat) toggleRotateMode();
                 if(e.code === 'KeyX' && !e.repeat) deleteHeldObject();
+                if(e.code === 'KeyC' && !e.repeat) connectHeldObject();
                 if(e.code === 'Escape') rotateMode = false;
                 if(e.code === 'KeyM') document.getElementById('leave-btn').click();
             });
@@ -765,8 +806,6 @@
                 if(e.code === 'KeyF') { fKeyActive = false; release(); }
             });
 
-            // ★左右矢印キー・画面ドラッグでの視点変更（Pointer Lockが使えない環境向け）
-            // ★向き変更モード中は、同じ入力（矢印キー・ドラッグ・マウス）で持っている物を回転させる
             const lookEuler = new THREE.Euler(0, 0, 0, 'YXZ');
             const heldRotEuler = new THREE.Euler(0, 0, 0, 'YXZ');
             const tmpHeldQuat = new THREE.Quaternion();
@@ -787,17 +826,19 @@
                 lookEuler.x = Math.max(-LOOK_PITCH_LIMIT, Math.min(LOOK_PITCH_LIMIT, lookEuler.x));
                 camera.quaternion.setFromEuler(lookEuler);
             }
-            let dragTouchId = null, lastTouchX = 0, lastTouchY = 0;
+            let dragTouchId = null, lastTouchX = 0, lastTouchY = 0, touchDragDistance = 0;
             const TOUCH_LOOK_SENSITIVITY = 0.0035;
             renderer.domElement.addEventListener('touchstart', e => {
                 if (dragTouchId !== null) return;
                 const t = e.changedTouches[0]; dragTouchId = t.identifier; lastTouchX = t.clientX; lastTouchY = t.clientY;
+                touchDragDistance = 0;
             }, { passive: true });
             renderer.domElement.addEventListener('touchmove', e => {
                 for (const t of e.changedTouches) {
                     if (t.identifier !== dragTouchId) continue;
                     const dx = t.clientX - lastTouchX, dy = t.clientY - lastTouchY;
                     lastTouchX = t.clientX; lastTouchY = t.clientY;
+                    touchDragDistance += Math.abs(dx) + Math.abs(dy);
                     applyLookDelta(dx * TOUCH_LOOK_SENSITIVITY, dy * TOUCH_LOOK_SENSITIVITY);
                 }
                 e.preventDefault();
@@ -851,11 +892,9 @@
                     heldBody.velocity.set((targetPos.x - heldBody.position.x)*15, (targetPos.y - heldBody.position.y)*15, (targetPos.z - heldBody.position.z)*15);
                 }
 
-                // ★オブジェクトの全体同期処理（オーナーのみ送信）
                 if(time - lastObjSync > 100) {
                     boxes.forEach(b => {
                         if(b.owner === myName) {
-                            // 動いている時か、自分が掴んでいる時だけ座標を送信（通信量削減）
                             const isMoving = b.body.velocity.lengthSquared() > 0.01 || b.body.angularVelocity.lengthSquared() > 0.01;
                             if(isMoving || b.key === heldBodyKey) {
                                 objectsRef.child(b.key).update({ 
@@ -872,7 +911,7 @@
                 const right = new THREE.Vector3(); right.setFromMatrixColumn(camera.matrix, 0); right.y = 0; right.normalize();
                 const forward = new THREE.Vector3(); forward.setFromMatrixColumn(camera.matrix, 2); forward.y = 0; forward.normalize();
 
-                const LOOK_TURN_SPEED = 1.8; // rad/sec
+                const LOOK_TURN_SPEED = 1.8;
                 if (lookLeft) applyLookDelta(-LOOK_TURN_SPEED * delta, 0);
                 if (lookRight) applyLookDelta(LOOK_TURN_SPEED * delta, 0);
                 if (lookUp) applyLookDelta(0, -LOOK_TURN_SPEED * delta);
@@ -885,7 +924,7 @@
                 if(moveL) { velX -= right.x; velZ -= right.z; } 
                 if(moveR) { velX += right.x; velZ += right.z; }
 
-                const speed = isCrouching ? 6 : (moveShift ? 25 : 15);
+                const speed = isCrouching ? 6 : (moveShift ? 25 : 16);
                 if (velX !== 0 || velZ !== 0) { const len = Math.sqrt(velX*velX + velZ*velZ); myBody.velocity.x = (velX / len) * speed; myBody.velocity.z = (velZ / len) * speed; } 
                 else { myBody.velocity.x = 0; myBody.velocity.z = 0; }
 
