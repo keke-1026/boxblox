@@ -120,22 +120,25 @@
 
             <div style="height: 1px; background: #eee; margin: 15px 0;"></div>
 
+             <div class="creation-info">
+                参加の上限は、パブリック鯖+プラ鯖の合計で <strong>100人</strong> までです。<br>
+                <span class="creation-info" id="public-capacity"></span>
+            </div>
+
             <div class="creation-row">
                 <button class="action-btn" id="open-public-modal-btn"><span class="material-symbols-outlined">add</span> パブリック鯖を作成</button>
-                <span class="creation-info" id="public-capacity"></span>
             </div>
             <div class="creation-row">
                 <button class="action-btn" id="open-private-modal-btn"><span class="material-symbols-outlined">lock</span> プライベート鯖を作成</button>
-                <span class="creation-info">(全体合計15人まで)</span>
             </div>
         </div>
 
         <div class="hub-footer">
             <div class="footer-section">
-                <span>遊び方 (How to play)</span>
+                <span>遊び方</span>
                 <span class="footer-text">
                     WASD:移動 / Shift:ダッシュ / Space:ジャンプ / Ctrl:しゃがむ<br>
-                    ←→↑↓ or 画面ドラッグ:視点変更 / 左クリック(またはF)長押し:物を掴む・投げる<br>
+                    ←→↑↓ or 画面ドラッグ:視点変更 / 左クリック(またはF)長押し:物を掴む・離して投げる<br>
                     B:選んだブロックを出す / N:出すブロックの種類を切り替え<br>
                     R:掴んでいる物の向きを変更(クリックか再度Rで解除) / X:掴んでいる自分の物を削除 / C:近くのブロックと連結<br>
                     M:退出 / /:チャット / Tab:プレイヤー一覧<br>
@@ -145,8 +148,8 @@
         </div>
 
         <div style="position: absolute; bottom: 12px; right: 18px; font-size: 11px; opacity: 0.6; text-align: right; line-height: 1.7;">
-            © 2026 boxblox — v1.2.1<br>
-            <a href="https://github.com/keke-1026/boxblox" target="_blank" rel="noopener" style="color: inherit; text-decoration: underline;">GitHub</a> ・ <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank" rel="noopener" style="color: inherit; text-decoration: underline;">この作品は CC BY-NC-SA 4.0 です</a>
+            © 2026 boxblox — v1.2.2<br>
+            <a href="https://github.com/keke-1026/boxblox" target="_blank" rel="noopener" style="color: inherit; text-decoration: underline;">GitHub</a> ・ <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank" rel="noopener" style="color: inherit; text-decoration: underline;">CC BY-NC-SA 4.0</a>
         </div>
     </div>
 
@@ -205,6 +208,7 @@
         <div id="crosshair"></div>
         <div id="top-info">
             <div id="room-display" style="font-weight: bold;">Room: </div>
+            <div id="wipe-timer" style="display: none; font-size: 12px; opacity: 0.75;"></div>
             <div style="margin-top: 5px;">
                 <div style="font-size: 12px; opacity: 0.7; margin-bottom: 4px;">物を出す</div>
                 <select id="block-select" title="出すブロックの種類"></select>
@@ -233,8 +237,6 @@
 
         <div id="admin-panel">
             <div style="font-weight: bold; border-bottom: 1px solid #ccc; padding-bottom: 5px;">管理者権限</div>
-            <button class="action-btn" id="toggle-chat-btn">チャット: ON</button>
-            <button class="action-btn" id="toggle-hub-btn">Hub表示: ON</button>
             <button class="action-btn" id="disband-btn" style="color: #ff6b6b;"><span class="material-symbols-outlined">delete_forever</span> サーバー解散</button>
             <div style="font-size: 14px; margin-top: 10px;">参加者管理:</div>
             <div id="admin-player-list"></div>
@@ -282,6 +284,13 @@
         let playerMeshes = {}; 
         const myColor = Math.random() * 0xffffff;
 
+        const PERSISTENT_ROOM_ID = 'endress_room';
+        const WIPE_INTERVAL_MS = 3 * 60 * 60 * 1000;
+        const GLOBAL_MAX_PLAYERS = 100;
+        function countTotalPlayers(rooms) {
+            return Object.values(rooms).reduce((sum, r) => sum + (r.players ? Object.keys(r.players).length : 0), 0);
+        }
+
         window.addEventListener('contextmenu', e => e.preventDefault());
 
         setInterval(() => {
@@ -292,25 +301,30 @@
             });
         }, 1000);
 
+        db.ref(`rooms/${PERSISTENT_ROOM_ID}`).once('value').then(snap => {
+            if (!snap.exists()) {
+                db.ref(`rooms/${PERSISTENT_ROOM_ID}`).set({
+                    type: 'public', serverName: '常設鯖',
+                    createdAt: firebase.database.ServerValue.TIMESTAMP, lastWipe: Date.now()
+                });
+            }
+        });
+
         db.ref('rooms').on('value', (snapshot) => {
             if (gameStarted) return; 
             const listDiv = document.getElementById('server-list'); listDiv.innerHTML = "";
-            const rooms = snapshot.val() || {}; let hasRooms = false; let publicCount = 0;
+            const rooms = snapshot.val() || {}; let hasRooms = false;
 
             Object.keys(rooms).forEach(roomId => {
                 const room = rooms[roomId], pCount = room.players ? Object.keys(room.players).length : 0;
                 const isOld = (Date.now() - (room.createdAt || 0)) > 10000;
-                if (pCount === 0 && isOld) { db.ref(`rooms/${roomId}`).remove(); return; }
+                if (pCount === 0 && isOld && roomId !== PERSISTENT_ROOM_ID) { db.ref(`rooms/${roomId}`).remove(); return; }
 
-                if (room.type === 'public') publicCount++;
                 hasRooms = true;
                 const maxPlayers = room.type === 'public' ? 8 : 15;
                 const sName = room.serverName || "名無しサーバー";
                 
-                let playersText = "非公開";
-                if (room.type === 'public' || (room.type === 'private' && room.settings?.showPlayers)) {
-                    playersText = room.players ? Object.keys(room.players).join(', ') : "誰もいません";
-                }
+                const playersText = room.players ? Object.keys(room.players).join(', ') : "誰もいません";
                 const icon = room.type === 'private' ? '<span class="material-symbols-outlined">lock</span>' : '<span class="material-symbols-outlined">public</span>';
                 
                 const item = document.createElement('div'); item.className = 'server-item';
@@ -323,7 +337,7 @@
                 `;
                 listDiv.appendChild(item);
             });
-            document.getElementById('public-capacity').innerText = `(残り ${10 - publicCount}枠)`;
+            document.getElementById('public-capacity').innerText = `(全サーバー合計 ${countTotalPlayers(rooms)} / ${GLOBAL_MAX_PLAYERS}人)`;
             if(!hasRooms) listDiv.innerHTML = "<div style='color: #999;'>稼働中のサーバーはありません</div>";
         });
 
@@ -342,8 +356,8 @@
         document.getElementById('create-public-btn').addEventListener('click', async () => {
             const sName = document.getElementById('public-server-name').value.trim();
             const snap = await db.ref('rooms').once('value'); const rooms = snap.val() || {};
-            let target = null; for (let i = 1; i <= 10; i++) { const id = `room_${String(i).padStart(2, '0')}`; if (!rooms[id]) { target = id; break; } }
-            if (!target) return showNotification('通常鯖の上限に達しています。');
+            if (countTotalPlayers(rooms) >= GLOBAL_MAX_PLAYERS) return showNotification(`全サーバー合計で${GLOBAL_MAX_PLAYERS}人に達しているため、今は作成できません。`);
+            let i = 1; while (rooms[`room_${String(i).padStart(2, '0')}`]) { i++; } const target = `room_${String(i).padStart(2, '0')}`;
             
             const roomData = { type: 'public', serverName: sName, createdAt: firebase.database.ServerValue.TIMESTAMP };
             await db.ref(`rooms/${target}`).set(roomData); 
@@ -364,12 +378,13 @@
             
             const sName = document.getElementById('private-server-name').value.trim();
             const snap = await db.ref('rooms').once('value'); const rooms = snap.val() || {};
+            if (countTotalPlayers(rooms) >= GLOBAL_MAX_PLAYERS) return showNotification(`全サーバー合計で${GLOBAL_MAX_PLAYERS}人に達しているため、今は作成できません。`);
             let i = 1; while(rooms[`room_p${String(i).padStart(2, '0')}`]) { i++; } const target = `room_p${String(i).padStart(2, '0')}`;
             
             const adminToken = Math.random().toString(36).substring(2);
             sessionStorage.setItem('adminToken_' + target, adminToken);
             
-            const roomData = { type: 'private', serverName: sName, password: pass, adminToken: adminToken, createdAt: firebase.database.ServerValue.TIMESTAMP, settings: { chatEnabled: true, showPlayers: true } };
+            const roomData = { type: 'private', serverName: sName, password: pass, adminToken: adminToken, createdAt: firebase.database.ServerValue.TIMESTAMP };
             await db.ref(`rooms/${target}`).set(roomData);
             
             document.getElementById('private-create-modal').style.display = 'none';
@@ -380,10 +395,11 @@
             saveProfileInfo(); 
             if (!myName) return showNotification('プレイヤー名を入力してください');
             
-            const roomSnap = await db.ref(`rooms/${roomId}`).once('value'); 
-            if(!roomSnap.exists()) return showNotification('このサーバーは既に存在しません。');
+            const roomsSnap = await db.ref('rooms').once('value'); const rooms = roomsSnap.val() || {};
+            const roomData = rooms[roomId];
+            if(!roomData) return showNotification('このサーバーは既に存在しません。');
+            if (countTotalPlayers(rooms) >= GLOBAL_MAX_PLAYERS) return showNotification(`全サーバー合計で${GLOBAL_MAX_PLAYERS}人に達しているため、今は参加できません。`);
             
-            const roomData = roomSnap.val();
             const myToken = sessionStorage.getItem('adminToken_' + roomId);
             
             if (type === 'private' && roomData.adminToken !== myToken) {
@@ -490,13 +506,39 @@
 
         function startGame() {
             gameStarted = true;
-            const roomRef = db.ref(`rooms/${currentRoomId}`), playersRef = roomRef.child('players'), objectsRef = roomRef.child('objects'), chatRef = roomRef.child('chat'), settingsRef = roomRef.child('settings');
+            const roomRef = db.ref(`rooms/${currentRoomId}`), playersRef = roomRef.child('players'), objectsRef = roomRef.child('objects'), chatRef = roomRef.child('chat');
 
             playersRef.child(myName).set({ x: 0, y: 2, z: 0, color: myColor, crouch: false }); playersRef.child(myName).onDisconnect().remove();
-            appendSystemLog(`${myName} として入室しました`, "#4caf50");
+            appendSystemLog(`${myName} が入室しました`, "#4caf50");
 
             roomRef.on('value', snap => { if (!snap.exists()) { showNotification('サーバーが解散されました。'); setTimeout(() => window.location.reload(), 2000); } });
             playersRef.child(myName).on('value', snap => { if (!snap.exists() && gameStarted && !isLeavingIntentional) { showNotification('サーバーからキックされました。'); setTimeout(() => window.location.reload(), 2000); } });
+
+            if (currentRoomId === PERSISTENT_ROOM_ID) {
+                let lastWipeTimestamp = null;
+                roomRef.child('lastWipe').on('value', snap => { lastWipeTimestamp = snap.val(); });
+                function checkPersistentWipe() {
+                    roomRef.child('lastWipe').transaction(current => {
+                        if (!current || Date.now() - current > WIPE_INTERVAL_MS) return Date.now();
+                        return;
+                    }, (error, committed) => {
+                        if (!error && committed) {
+                            objectsRef.remove();
+                            showNotification('常設サーバーが3時間ごとの更新でリセットされました');
+                        }
+                    });
+                }
+                checkPersistentWipe();
+                setInterval(checkPersistentWipe, 30000);
+                setInterval(() => {
+                    const el = document.getElementById('wipe-timer');
+                    if (!lastWipeTimestamp) return;
+                    const remain = Math.max(0, lastWipeTimestamp + WIPE_INTERVAL_MS - Date.now());
+                    const h = Math.floor(remain / 3600000), m = Math.floor((remain % 3600000) / 60000), s = Math.floor((remain % 60000) / 1000);
+                    el.textContent = `次のブロック全消去まで ${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+                    el.style.display = 'block';
+                }, 1000);
+            }
 
             const world = new CANNON.World(); world.gravity.set(0, -25, 0); world.broadphase = new CANNON.NaiveBroadphase();
             const groundBody = new CANNON.Body({ mass: 0, shape: new CANNON.Plane(), material: new CANNON.Material({ friction: 0.1, restitution: 0.3 }) });
@@ -531,10 +573,10 @@
                 scene.add(wallMesh);
             }
             const mapEdge = MAP_HALF_SIZE + WALL_THICK / 2, mapSpan = MAP_HALF_SIZE * 2 + WALL_THICK * 2;
-            addBoundaryWall(0, -mapEdge, mapSpan, WALL_THICK);
-            addBoundaryWall(0,  mapEdge, mapSpan, WALL_THICK);
+            addBoundaryWall(0, -mapEdge, mapSpan, WALL_THICK); 
+            addBoundaryWall(0,  mapEdge, mapSpan, WALL_THICK); 
             addBoundaryWall(-mapEdge, 0, WALL_THICK, mapSpan); 
-            addBoundaryWall( mapEdge, 0, WALL_THICK, mapSpan);
+            addBoundaryWall( mapEdge, 0, WALL_THICK, mapSpan); 
 
             controls = new THREE.PointerLockControls(camera, document.body);
             const pointerLockSupported = typeof document.body.requestPointerLock === 'function';
@@ -575,7 +617,6 @@
             });
 
             const boxes = [];
-            // ブロックたちだぜ～☆
             const BLOCK_DEFS = {
                 box:         { label: '立方体',       geo: () => new THREE.BoxGeometry(1, 1, 1),        shape: () => new CANNON.Box(new CANNON.Vec3(0.5, 0.5, 0.5)) },
                 smallbox:    { label: '小さい立方体',   geo: () => new THREE.BoxGeometry(0.5, 0.5, 0.5),   shape: () => new CANNON.Box(new CANNON.Vec3(0.25, 0.25, 0.25)) },
@@ -662,7 +703,9 @@
                 selectBlockType(next);
                 showNotification('選択中: ' + BLOCK_DEFS[next].label);
             }
+            const MAX_OBJECTS_PER_ROOM = 200;
             function triggerSpawn(type) {
+                if (boxes.length >= MAX_OBJECTS_PER_ROOM) { showNotification(`これ以上ブロックを出せません（上限${MAX_OBJECTS_PER_ROOM}個）`); return; }
                 type = type || selectedBlockType;
                 const colorNum = Math.floor(Math.random() * 0xffffff);
                 const pos = new THREE.Vector3(); camera.getWorldDirection(pos); pos.multiplyScalar(5).add(camera.position); pos.y += 2;
@@ -678,7 +721,7 @@
                 const obj = boxes.find(b => b.key === heldBodyKey);
                 if (!obj) return;
                 if (obj.creator !== myName) { showNotification('自分が出したブロックだけ削除できます'); return; }
-                objectsRef.child(heldBodyKey).remove(); // 後片付けはchild_removedリスナーが行う
+                objectsRef.child(heldBodyKey).remove();
             }
 
             function connectHeldObject() {
@@ -848,8 +891,6 @@
             renderer.domElement.addEventListener('touchcancel', endTouchDrag, { passive: true });
 
 
-            let chatEnabled = true; settingsRef.on('value', snap => { if(!snap.exists()) return; chatEnabled = snap.val().chatEnabled; document.getElementById('chat-input').placeholder = chatEnabled ? "チャット ( / で入力 )" : "チャットは無効化"; document.getElementById('chat-input').disabled = !chatEnabled; document.getElementById('chat-send').disabled = !chatEnabled; document.getElementById('toggle-chat-btn').innerHTML = chatEnabled ? 'チャット: ON' : 'チャット: OFF'; document.getElementById('toggle-hub-btn').innerHTML = snap.val().showPlayers ? 'Hub表示: ON' : 'Hub表示: OFF'; });
-            
             chatRef.on('child_added', snap => { 
                 const msg = snap.val(), log = document.getElementById('chat-log'), div = document.createElement('div');
                 div.className = "chat-msg-line";
@@ -857,15 +898,11 @@
                 log.appendChild(div); log.scrollTop = log.scrollHeight; 
             });
             
-            function sendChat() { const inp = document.getElementById('chat-input'); if(inp.value.trim() && chatEnabled) { chatRef.push({ sender: myName, text: inp.value.trim(), timestamp: firebase.database.ServerValue.TIMESTAMP }); inp.value = ''; } }
+            function sendChat() { const inp = document.getElementById('chat-input'); if(inp.value.trim()) { chatRef.push({ sender: myName, text: inp.value.trim(), timestamp: firebase.database.ServerValue.TIMESTAMP }); inp.value = ''; } }
             document.getElementById('chat-send').addEventListener('click', sendChat); document.getElementById('chat-input').addEventListener('keydown', e => { if(e.key === 'Enter') sendChat(); });
 
             if (isAdmin) {
-                let chatState = true, hubState = true;
-                settingsRef.once('value', s => { if(s.exists()){ chatState = s.val().chatEnabled; hubState = s.val().showPlayers; }});
                 document.getElementById('admin-menu-btn').addEventListener('click', () => { const p = document.getElementById('admin-panel'); p.style.display = p.style.display === 'none' ? 'flex' : 'none'; if(controls.isLocked) controls.unlock(); });
-                document.getElementById('toggle-chat-btn').addEventListener('click', () => { chatState = !chatState; settingsRef.update({ chatEnabled: chatState }); });
-                document.getElementById('toggle-hub-btn').addEventListener('click', () => { hubState = !hubState; settingsRef.update({ showPlayers: hubState }); });
                 document.getElementById('disband-btn').addEventListener('click', () => { 
                     document.getElementById('disband-confirm-modal').style.display = 'flex';
                     if(controls && controls.isLocked) controls.unlock();
@@ -911,7 +948,7 @@
                 const right = new THREE.Vector3(); right.setFromMatrixColumn(camera.matrix, 0); right.y = 0; right.normalize();
                 const forward = new THREE.Vector3(); forward.setFromMatrixColumn(camera.matrix, 2); forward.y = 0; forward.normalize();
 
-                const LOOK_TURN_SPEED = 1.8;
+                const LOOK_TURN_SPEED = 1.8; // rad/sec
                 if (lookLeft) applyLookDelta(-LOOK_TURN_SPEED * delta, 0);
                 if (lookRight) applyLookDelta(LOOK_TURN_SPEED * delta, 0);
                 if (lookUp) applyLookDelta(0, -LOOK_TURN_SPEED * delta);
