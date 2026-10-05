@@ -148,7 +148,7 @@
         </div>
 
         <div style="position: absolute; bottom: 12px; right: 18px; font-size: 11px; opacity: 0.6; text-align: right; line-height: 1.7;">
-            © 2026 boxblox — v1.2.2<br>
+            © 2026 boxblox — v1.2.3<br>
             <a href="https://github.com/keke-1026/boxblox" target="_blank" rel="noopener" style="color: inherit; text-decoration: underline;">GitHub</a> ・ <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank" rel="noopener" style="color: inherit; text-decoration: underline;">CC BY-NC-SA 4.0</a>
         </div>
     </div>
@@ -248,17 +248,6 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/PointerLockControls.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cannon.js/0.6.2/cannon.min.js"></script>
-
-    <script type="module">
-        import { DiscordSDK } from "https://unpkg.com/@discord/embedded-app-sdk@1.2.0/output/index.js";
-        const discordSdk = new DiscordSDK("1554787096919674952");
-
-        async function initDiscord() {
-            await discordSdk.ready();
-            console.log("Discord SDK準備完了だぜ");
-        }
-        initDiscord();
-    </script>
 
     <script>
         let controls; 
@@ -494,11 +483,24 @@
             }
         });
 
-        function appendSystemLog(text, color) {
-            const log = document.getElementById('chat-log'), div = document.createElement('div');
+        function insertLogLine(div, timestamp) {
+            const log = document.getElementById('chat-log');
+            div.dataset.ts = timestamp;
+            const children = log.children;
+            let inserted = false;
+            for (let i = 0; i < children.length; i++) {
+                if (Number(children[i].dataset.ts) > timestamp) { log.insertBefore(div, children[i]); inserted = true; break; }
+            }
+            if (!inserted) log.appendChild(div);
+            log.scrollTop = log.scrollHeight;
+        }
+
+        function appendSystemLog(text, color, timestamp) {
+            timestamp = timestamp || Date.now();
+            const div = document.createElement('div');
             div.className = "chat-msg-line";
-            div.style.color = color; div.innerHTML = `<span class="chat-time">[${formatTimeHM(Date.now())}]</span> ${text}`;
-            log.appendChild(div); log.scrollTop = log.scrollHeight;
+            div.style.color = color; div.innerHTML = `<span class="chat-time">[${formatTimeHM(timestamp)}]</span> ${text}`;
+            insertLogLine(div, timestamp);
         }
 
         document.addEventListener('keydown', e => {
@@ -628,6 +630,45 @@
             });
 
             const boxes = [];
+            function createRoundedBoxGeometry(size, segments, sharpness) {
+                const geo = new THREE.BoxGeometry(size, size, size, segments, segments, segments);
+                const pos = geo.attributes.position;
+                const uv = geo.attributes.uv;
+                const normal = geo.attributes.normal;
+                const exp = 2 / sharpness;
+                const half = size / 2;
+                for (let i = 0; i < pos.count; i++) {
+                    const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i);
+                    const nx = x / half, ny = y / half, nz = z / half;
+                    const r = Math.sqrt(nx * nx + ny * ny + nz * nz) || 1;
+                    const dx = nx / r, dy = ny / r, dz = nz / r;
+                    const sign = v => (v < 0 ? -1 : 1);
+                    const sx = sign(dx) * Math.pow(Math.abs(dx), exp);
+                    const sy = sign(dy) * Math.pow(Math.abs(dy), exp);
+                    const sz = sign(dz) * Math.pow(Math.abs(dz), exp);
+                    
+                    const newX = sx * half;
+                    const newY = sy * half;
+                    const newZ = sz * half;
+                    pos.setXYZ(i, newX, newY, newZ);
+
+                    const normX = normal.getX(i);
+                    const normY = normal.getY(i);
+                    const normZ = normal.getZ(i);
+
+                    if (Math.abs(normX) > 0.5) {
+                        uv.setXY(i, (normX < 0 ? newZ : -newZ) / size + 0.5, newY / size + 0.5);
+                    } else if (Math.abs(normY) > 0.5) {
+                        uv.setXY(i, newX / size + 0.5, (normY > 0 ? -newZ : newZ) / size + 0.5);
+                    } else if (Math.abs(normZ) > 0.5) {
+                        uv.setXY(i, (normZ < 0 ? -newX : newX) / size + 0.5, newY / size + 0.5);
+                    }
+                }
+                pos.needsUpdate = true;
+                uv.needsUpdate = true;
+                geo.computeVertexNormals();
+                return geo;
+            }
             const BLOCK_DEFS = {
                 box:         { label: '立方体',       geo: () => new THREE.BoxGeometry(1, 1, 1),        shape: () => new CANNON.Box(new CANNON.Vec3(0.5, 0.5, 0.5)) },
                 smallbox:    { label: '小さい立方体',   geo: () => new THREE.BoxGeometry(0.5, 0.5, 0.5),   shape: () => new CANNON.Box(new CANNON.Vec3(0.25, 0.25, 0.25)) },
@@ -639,6 +680,8 @@
                 sphere:      { label: '球',            geo: () => new THREE.SphereGeometry(0.6, 16, 16),  shape: () => new CANNON.Sphere(0.6) },
                 smallsphere: { label: '小さい球',       geo: () => new THREE.SphereGeometry(0.3, 16, 16),  shape: () => new CANNON.Sphere(0.3) },
                 cylinder:    { label: '円柱',           geo: () => new THREE.CylinderGeometry(0.5, 0.5, 1, 16), shape: () => new CANNON.Cylinder(0.5, 0.5, 1, 16) },
+                dice:        { label: 'サイコロ',       geo: () => createRoundedBoxGeometry(1, 10, 7),    shape: () => new CANNON.Box(new CANNON.Vec3(0.5, 0.5, 0.5)), isImageBlock: true,
+                               images: ['images/dice_1.png', 'images/dice_2.png', 'images/dice_3.png', 'images/dice_4.png', 'images/dice_5.png', 'images/dice_6.png'] },
             };
             const BLOCK_TYPE_ORDER = Object.keys(BLOCK_DEFS);
 
@@ -648,11 +691,50 @@
                 world.addConstraint(new CANNON.LockConstraint(objA.body, objB.body));
             }
 
+            const DICE_EDGE_COLOR = '#727171';
+
+            function buildDiceFaceTexture(path) {
+                const canvas = document.createElement('canvas');
+                canvas.width = 2; canvas.height = 2;
+                const ctx = canvas.getContext('2d');
+                ctx.fillStyle = DICE_EDGE_COLOR;
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                const tex = new THREE.CanvasTexture(canvas);
+                const img = new Image();
+                img.crossOrigin = 'anonymous';
+                img.onload = () => {
+                    canvas.width = img.naturalWidth || 256;
+                    canvas.height = img.naturalHeight || 256;
+                    ctx.fillStyle = DICE_EDGE_COLOR;
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    ctx.drawImage(img, 0, 0);
+                    tex.needsUpdate = true;
+                };
+                img.onerror = () => {
+                    console.warn('画像を読み込めませんでした :', path);
+                };
+                img.src = path;
+                return tex;
+            }
+            const diceMaterialCache = {};
+            function getDiceMaterials() {
+                return BLOCK_DEFS.dice.images.map(path => {
+                    if (!diceMaterialCache[path]) {
+                        diceMaterialCache[path] = new THREE.MeshStandardMaterial({ map: buildDiceFaceTexture(path) });
+                    }
+                    return diceMaterialCache[path];
+                });
+            }
+            function buildMaterial(def, color) {
+                if (def.isImageBlock) return getDiceMaterials();
+                return new THREE.MeshStandardMaterial({ color: color });
+            }
+
             objectsRef.on('child_added', snap => {
                 const d = snap.val();
                 const def = BLOCK_DEFS[d.type] || BLOCK_DEFS.box;
                 const geo = def.geo(), shape = def.shape();
-                const mesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: d.color })); scene.add(mesh);
+                const mesh = new THREE.Mesh(geo, buildMaterial(def, d.color)); scene.add(mesh);
                 const body = new CANNON.Body({ mass: 5, shape: shape }); 
                 body.position.set(d.x, d.y, d.z); 
                 if(d.qx !== undefined) body.quaternion.set(d.qx, d.qy, d.qz, d.qw);
@@ -790,7 +872,7 @@
                 rotateMode = !rotateMode;
                 if (rotateMode) {
                     if (controls.isLocked) controls.unlock();
-                    showNotification('向き変更モード：クリックか再度Rで解除');
+                    showNotification('向き変更モード');
                 } else {
                     showNotification('通常モードに戻りました');
                 }
@@ -902,11 +984,12 @@
             renderer.domElement.addEventListener('touchcancel', endTouchDrag, { passive: true });
 
 
-            chatRef.on('child_added', snap => { 
-                const msg = snap.val(), log = document.getElementById('chat-log'), div = document.createElement('div');
+            chatRef.on('child_added', snap => {
+                const msg = snap.val(), div = document.createElement('div');
+                const ts = msg.timestamp || Date.now();
                 div.className = "chat-msg-line";
-                div.innerHTML = `<span class="chat-time">[${formatTimeHM(msg.timestamp||Date.now())}]</span> <strong>${msg.sender}:</strong> ${msg.text}`; 
-                log.appendChild(div); log.scrollTop = log.scrollHeight; 
+                div.innerHTML = `<span class="chat-time">[${formatTimeHM(ts)}]</span> <strong>${msg.sender}:</strong> ${msg.text}`;
+                insertLogLine(div, ts);
             });
             
             function sendChat() { const inp = document.getElementById('chat-input'); if(inp.value.trim()) { chatRef.push({ sender: myName, text: inp.value.trim(), timestamp: firebase.database.ServerValue.TIMESTAMP }); inp.value = ''; } }
@@ -959,7 +1042,7 @@
                 const right = new THREE.Vector3(); right.setFromMatrixColumn(camera.matrix, 0); right.y = 0; right.normalize();
                 const forward = new THREE.Vector3(); forward.setFromMatrixColumn(camera.matrix, 2); forward.y = 0; forward.normalize();
 
-                const LOOK_TURN_SPEED = 1.8; // rad/sec
+                const LOOK_TURN_SPEED = 1.8;
                 if (lookLeft) applyLookDelta(-LOOK_TURN_SPEED * delta, 0);
                 if (lookRight) applyLookDelta(LOOK_TURN_SPEED * delta, 0);
                 if (lookUp) applyLookDelta(0, -LOOK_TURN_SPEED * delta);
