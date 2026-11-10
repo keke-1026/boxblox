@@ -1,0 +1,15 @@
+{
+  "hosting": {
+    "site": "boxblox-keke-dev",
+    "public": ".",
+    "ignore": [
+      "firebase.json",
+      ".firebaserc",
+      ".github/**",
+      ".git/**",
+      "README.md",
+      "**/.*",
+      "**/node_modules/**"
+    ]
+  }
+}
