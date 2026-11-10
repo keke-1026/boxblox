@@ -88,6 +88,7 @@
         #chat-input-area { display: flex; border-top: 1px solid #ccc; background: rgba(255,255,255,0.9); border-radius: 0 0 5px 5px; min-width: 280px; }
         #chat-input { flex: 1; border: none; background: transparent; padding: 8px 10px; font-size: 14px; color: #333; }
         .chat-time { opacity: 0.6; font-size: 11px; margin-right: 5px; color: #666; }
+        .chat-msg-line a { color: #1a73e8; text-decoration: underline; }
         
         #admin-panel { display: none; position: absolute; top: 60px; right: 330px; background: rgba(255,255,255,0.95); padding: 20px; flex-direction: column; gap: 15px; min-width: 200px; pointer-events: auto; border-radius: 8px; border: 1px solid #eee; z-index: 1010; transition: right 0.3s ease; }
         .kick-list-item { display: flex; justify-content: space-between; font-size: 14px; margin-bottom: 5px; }
@@ -148,7 +149,7 @@
         </div>
 
         <div style="position: absolute; bottom: 12px; right: 18px; font-size: 11px; opacity: 0.6; text-align: right; line-height: 1.7;">
-            © 2026 boxblox — v1.3.0<br>
+            © 2026 boxblox — v1.3.1<br>
             <a href="https://github.com/keke-1026/boxblox" target="_blank" rel="noopener" style="color: inherit; text-decoration: underline;">GitHub</a> ・ <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank" rel="noopener" style="color: inherit; text-decoration: underline;">CC BY-NC-SA 4.0</a>
         </div>
     </div>
@@ -229,7 +230,7 @@
             <div id="chat-container">
                 <div id="chat-log"></div>
                 <div id="chat-input-area">
-                    <input type="text" id="chat-input" placeholder="チャット ( / で入力 )" maxlength="50">
+                    <input type="text" id="chat-input" placeholder="チャット ( / で入力 )" maxlength="100">
                     <button class="action-btn" id="chat-send" style="padding: 0 10px;"><span class="material-symbols-outlined">send</span></button>
                 </div>
             </div>
@@ -277,6 +278,15 @@
         function formatTimeHM(timestamp) { const date = new Date(timestamp); return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`; }
         function formatDateTime(timestamp) { const date = new Date(timestamp); return `${date.getMonth() + 1}/${date.getDate()} ${formatTimeHM(timestamp)}`; }
         function escapeHtml(str) { return String(str).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+        const CHAT_MAX_LENGTH = 100;
+        // エスケープ済みの文字列中の http(s) URL を a タグにする (http/https のみ)
+        function linkify(escaped) {
+            return escaped.replace(/https?:\/\/(?:(?!&lt;|&gt;|&quot;|&#39;)[A-Za-z0-9\-._~:/?#@!$&()*+,;=%\[\]])+/g, m => {
+                const trail = (m.match(/[.,!?;:)\]、。！？）」』]+$/) || [''])[0];
+                const url = trail ? m.slice(0, -trail.length) : m;
+                return `<a href="${url}" target="_blank" rel="noopener noreferrer">${url}</a>${trail}`;
+            });
+        }
 
         const firebaseConfig = { apiKey: "AIzaSyBjQWOa8y2UWgL81HvmEv_yiTCtTbk4cxU", authDomain: "keke-dev.firebaseapp.com", databaseURL: "https://keke-dev-default-rtdb.asia-southeast1.firebasedatabase.app", projectId: "keke-dev" };
         firebase.initializeApp(firebaseConfig); 
@@ -1050,11 +1060,11 @@
                 const msg = snap.val(), div = document.createElement('div');
                 const ts = msg.timestamp || Date.now();
                 div.className = "chat-msg-line";
-                div.innerHTML = `<span class="chat-time">[${formatDateTime(ts)}]</span> <strong>${escapeHtml(msg.sender)}:</strong> ${escapeHtml(msg.text)}`;
+                div.innerHTML = `<span class="chat-time">[${formatDateTime(ts)}]</span> <strong>${escapeHtml(msg.sender)}:</strong> ${linkify(escapeHtml(msg.text))}`;
                 insertLogLine(div, ts);
             });
             
-            function sendChat() { const inp = document.getElementById('chat-input'); if(inp.value.trim()) { chatRef.push({ sender: myName, text: inp.value.trim(), timestamp: firebase.database.ServerValue.TIMESTAMP }); inp.value = ''; } }
+            function sendChat() { const inp = document.getElementById('chat-input'); if(inp.value.trim()) { chatRef.push({ sender: myName, text: inp.value.trim().slice(0, CHAT_MAX_LENGTH), timestamp: firebase.database.ServerValue.TIMESTAMP }); inp.value = ''; } }
             document.getElementById('chat-send').addEventListener('click', sendChat); document.getElementById('chat-input').addEventListener('keydown', e => { if(e.key === 'Enter') sendChat(); });
 
             if (isAdmin) {
