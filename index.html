@@ -148,7 +148,7 @@
         </div>
 
         <div style="position: absolute; bottom: 12px; right: 18px; font-size: 11px; opacity: 0.6; text-align: right; line-height: 1.7;">
-            © 2026 boxblox — v1.2.3<br>
+            © 2026 boxblox — v1.3.0<br>
             <a href="https://github.com/keke-1026/boxblox" target="_blank" rel="noopener" style="color: inherit; text-decoration: underline;">GitHub</a> ・ <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank" rel="noopener" style="color: inherit; text-decoration: underline;">CC BY-NC-SA 4.0</a>
         </div>
     </div>
@@ -275,6 +275,8 @@
         }
         function formatTimeElapsed(ms) { const m = Math.floor(ms / 60000), s = Math.floor((ms % 60000) / 1000); return `${m}分${s}秒`; }
         function formatTimeHM(timestamp) { const date = new Date(timestamp); return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`; }
+        function formatDateTime(timestamp) { const date = new Date(timestamp); return `${date.getMonth() + 1}/${date.getDate()} ${formatTimeHM(timestamp)}`; }
+        function escapeHtml(str) { return String(str).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
 
         const firebaseConfig = { apiKey: "AIzaSyBjQWOa8y2UWgL81HvmEv_yiTCtTbk4cxU", authDomain: "keke-dev.firebaseapp.com", databaseURL: "https://keke-dev-default-rtdb.asia-southeast1.firebasedatabase.app", projectId: "keke-dev" };
         firebase.initializeApp(firebaseConfig); 
@@ -499,7 +501,7 @@
             timestamp = timestamp || Date.now();
             const div = document.createElement('div');
             div.className = "chat-msg-line";
-            div.style.color = color; div.innerHTML = `<span class="chat-time">[${formatTimeHM(timestamp)}]</span> ${text}`;
+            div.style.color = color; div.innerHTML = `<span class="chat-time">[${formatDateTime(timestamp)}]</span> ${text}`;
             insertLogLine(div, timestamp);
         }
 
@@ -522,7 +524,7 @@
             const roomRef = db.ref(`rooms/${currentRoomId}`), playersRef = roomRef.child('players'), objectsRef = roomRef.child('objects'), chatRef = roomRef.child('chat');
 
             playersRef.child(myName).set({ x: 0, y: 2, z: 0, color: myColor, crouch: false }); playersRef.child(myName).onDisconnect().remove();
-            appendSystemLog(`${myName} が入室しました`, "#4caf50");
+            appendSystemLog(`${escapeHtml(myName)} が入室しました`, "#4caf50");
 
             roomRef.on('value', snap => { if (!snap.exists()) { showNotification('サーバーが解散されました。'); setTimeout(() => window.location.reload(), 2000); } });
             playersRef.child(myName).on('value', snap => { if (!snap.exists() && gameStarted && !isLeavingIntentional) { showNotification('サーバーからキックされました。'); setTimeout(() => window.location.reload(), 2000); } });
@@ -589,7 +591,59 @@
             addBoundaryWall(0, -mapEdge, mapSpan, WALL_THICK); 
             addBoundaryWall(0,  mapEdge, mapSpan, WALL_THICK); 
             addBoundaryWall(-mapEdge, 0, WALL_THICK, mapSpan); 
-            addBoundaryWall( mapEdge, 0, WALL_THICK, mapSpan); 
+            addBoundaryWall( mapEdge, 0, WALL_THICK, mapSpan);
+
+            // ===== マップ地形 (全クライアントで同一の固定構造物。同期は不要) =====
+            // 中央(スポーン地点 半径約12)は空けてある
+            const terrainEdgeMat = new THREE.LineBasicMaterial({ color: 0x607d8b });
+            function addTerrainPiece(geo, shape, color, pos, quat) {
+                const mesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: color }));
+                mesh.position.set(pos.x, pos.y, pos.z);
+                mesh.add(new THREE.LineSegments(new THREE.EdgesGeometry(geo), terrainEdgeMat));
+                const body = new CANNON.Body({ mass: 0, shape: shape });
+                body.position.set(pos.x, pos.y, pos.z);
+                if (quat) { mesh.quaternion.copy(quat); body.quaternion.set(quat.x, quat.y, quat.z, quat.w); }
+                scene.add(mesh); world.addBody(body);
+            }
+            // 底面が地面に接する直方体 (cx, cz = 中心座標 / w = X幅, h = 高さ, d = Z幅)
+            function addTerrainBox(cx, cz, w, h, d, color) {
+                addTerrainPiece(new THREE.BoxGeometry(w, h, d), new CANNON.Box(new CANNON.Vec3(w / 2, h / 2, d / 2)), color, { x: cx, y: h / 2, z: cz });
+            }
+            // スロープ: (startX, startZ) の地面から方向 (dirX, dirZ) へ run だけ進む間に height まで上がる
+            function addTerrainRamp(startX, startZ, dirX, dirZ, run, height, width, color) {
+                const T = 1, len = Math.sqrt(run * run + height * height), theta = Math.atan2(height, run);
+                const qTilt = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), theta);
+                const qYaw = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.atan2(-dirZ, dirX));
+                const q = qYaw.multiply(qTilt);
+                const sinT = Math.sin(theta), cosT = Math.cos(theta);
+                addTerrainPiece(
+                    new THREE.BoxGeometry(len, T, width),
+                    new CANNON.Box(new CANNON.Vec3(len / 2, T / 2, width / 2)),
+                    color,
+                    { x: startX + dirX * run / 2 + sinT * dirX * T / 2, y: height / 2 - cosT * T / 2, z: startZ + dirZ * run / 2 + sinT * dirZ * T / 2 },
+                    q
+                );
+            }
+
+            // 四隅の塔 + 中心側から登るスロープ
+            const TOWER_H = 3, TOWER_SIZE = 12, TOWER_C = 30, RAMP_RUN = 9, RAMP_W = 4;
+            [[1, 1], [1, -1], [-1, 1], [-1, -1]].forEach(([sx, sz]) => {
+                addTerrainBox(sx * TOWER_C, sz * TOWER_C, TOWER_SIZE, TOWER_H, TOWER_SIZE, 0xcfd8dc);
+                addTerrainRamp(sx * (TOWER_C - TOWER_SIZE / 2 - RAMP_RUN), sz * TOWER_C, sx, 0, RAMP_RUN, TOWER_H, RAMP_W, 0xffe0b2);
+                // 塔の上の柱
+                addTerrainBox(sx * (TOWER_C + 2), sz * (TOWER_C + 2), 2, 5, 2, 0xb0bec5);
+            });
+
+            // 北側の階段 (ジャンプで登る。1段1.2m)
+            addTerrainBox(0, -14, 8, 1.2, 4, 0xc5e1a5);
+            addTerrainBox(0, -18, 8, 2.4, 4, 0xaed581);
+            addTerrainBox(0, -24, 8, 3.6, 8, 0x9ccc65);
+
+            // 東西南の柱
+            [[18, 0], [-18, 0], [0, 18]].forEach(([px, pz]) => addTerrainBox(px, pz, 2, 8, 2, 0xb0bec5));
+            // 南側に低い壁パネル(遮蔽物)
+            addTerrainBox(-8, 24, 10, 2, 1, 0x90caf9);
+            addTerrainBox(8, 24, 10, 2, 1, 0x90caf9);
 
             controls = new THREE.PointerLockControls(camera, document.body);
             const pointerLockSupported = typeof document.body.requestPointerLock === 'function';
@@ -616,7 +670,7 @@
             playersRef.on('child_added', snap => { 
                 if (snap.key === myName) return; 
                 const d = snap.val(); const avatar = createAvatar(d.color, snap.key); avatar.position.set(d.x, d.y, d.z); scene.add(avatar); playerMeshes[snap.key] = avatar; 
-                updateAdminList(); if (!initialLoad) appendSystemLog(`+ ${snap.key} が入室しました`, "#4caf50"); 
+                updateAdminList(); if (!initialLoad) appendSystemLog(`+ ${escapeHtml(snap.key)} が入室しました`, "#4caf50"); 
             });
             playersRef.on('child_changed', snap => { 
                 if (snap.key === myName || !playerMeshes[snap.key]) return; 
@@ -626,7 +680,7 @@
             });
             playersRef.on('child_removed', snap => { 
                 if (playerMeshes[snap.key]) { scene.remove(playerMeshes[snap.key]); delete playerMeshes[snap.key]; } 
-                updateAdminList(); if (!initialLoad) appendSystemLog(`- ${snap.key} が退出しました`, "#f44336"); 
+                updateAdminList(); if (!initialLoad) appendSystemLog(`- ${escapeHtml(snap.key)} が退出しました`, "#f44336"); 
             });
 
             const boxes = [];
@@ -892,6 +946,14 @@
                 lastJumpTime = now;
             }
 
+            // 上向きの面(地面・ブロック・塔・階段の上)に接していればジャンプ可能にする
+            const contactNormal = new CANNON.Vec3(), upAxis = new CANNON.Vec3(0, 1, 0);
+            myBody.addEventListener('collide', e => {
+                const c = e.contact;
+                if (c.bi.id === myBody.id) c.ni.negate(contactNormal); else contactNormal.copy(c.ni);
+                if (contactNormal.dot(upAxis) > 0.5) canJump = true;
+            });
+
             let moveF = false, moveB = false, moveL = false, moveR = false, moveShift = false, moveJump = false, moveCrouch = false, lookLeft = false, lookRight = false, lookUp = false, lookDown = false;
             let fKeyActive = false;
             
@@ -988,7 +1050,7 @@
                 const msg = snap.val(), div = document.createElement('div');
                 const ts = msg.timestamp || Date.now();
                 div.className = "chat-msg-line";
-                div.innerHTML = `<span class="chat-time">[${formatTimeHM(ts)}]</span> <strong>${msg.sender}:</strong> ${msg.text}`;
+                div.innerHTML = `<span class="chat-time">[${formatDateTime(ts)}]</span> <strong>${escapeHtml(msg.sender)}:</strong> ${escapeHtml(msg.text)}`;
                 insertLogLine(div, ts);
             });
             
