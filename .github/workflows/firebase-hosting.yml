@@ -15,6 +15,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Check version consistency (index.html and version.json)
+        run: |
+          app=$(grep -oP "window.APP_VERSION = '\K[^']+" index.html)
+          json=$(python3 -c "import json; print(json.load(open('version.json'))['version'])")
+          echo "index.html=$app version.json=$json"
+          test -n "$app" && test "$app" = "$json"
       - uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: ${{ secrets.GITHUB_TOKEN }}

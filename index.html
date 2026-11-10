@@ -32,6 +32,9 @@
         body.dark-mode .modal { background: rgba(18, 18, 18, 0.95); }
         body.dark-mode .server-meta, body.dark-mode .player-list { opacity: 0.7; color: #ccc; }
 
+        #update-banner { display: none; position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); z-index: 10001; align-items: center; gap: 12px; background: rgba(51,51,51,0.95); color: #fff; padding: 10px 16px; border-radius: 30px; font-size: 13px; box-shadow: 0 4px 10px rgba(0,0,0,0.2); max-width: calc(100vw - 32px); }
+        #update-banner button { background: none; border: 1px solid rgba(255,255,255,0.6); color: #fff; border-radius: 16px; padding: 4px 12px; font-size: 13px; cursor: pointer; }
+        #update-banner #update-banner-close { border: none; padding: 4px 6px; }
         #notification-container { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; gap: 10px; z-index: 9999; pointer-events: none; }
         .notification { background: rgba(51, 51, 51, 0.9); color: white; padding: 10px 20px; border-radius: 30px; font-size: 14px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); opacity: 0; transform: translateY(-20px); animation: dropDown 0.3s forwards, fadeUp 0.3s forwards 2.7s; text-align: center; }
         @keyframes dropDown { to { opacity: 1; transform: translateY(0); } }
@@ -102,6 +105,11 @@
 <body>
 
     <div id="notification-container"></div>
+    <div id="update-banner">
+        <span id="update-banner-text"></span>
+        <button id="update-banner-reload">更新する</button>
+        <button id="update-banner-close" aria-label="閉じる">×</button>
+    </div>
 
     <div id="hub-screen">
         <div class="hub-header">
@@ -143,13 +151,14 @@
                     B:選んだブロックを出す / N:出すブロックの種類を切り替え<br>
                     R:掴んでいる物の向きを変更(クリックか再度Rで解除) / X:掴んでいる自分の物を削除 / C:近くのブロックと連結<br>
                     M:退出 / /:チャット / Tab:プレイヤー一覧<br>
-                    プライベート鯖のみ2回ジャンプで空中浮遊 (Spaceで上昇、Ctrlで下降)
+                    プライベート鯖のみ2回ジャンプで空中浮遊 (Spaceで上昇、Ctrlで下降)<br>
+                    はしご: 近づいてWで登る / Sで降りる / Spaceで飛び降りる (上まで登ってWで足場へ)
                 </span>
             </div>
         </div>
 
         <div style="position: absolute; bottom: 12px; right: 18px; font-size: 11px; opacity: 0.6; text-align: right; line-height: 1.7;">
-            © 2026 boxblox — v1.3.1<br>
+            © 2026 boxblox — v<span id="app-version"></span><br>
             <a href="https://github.com/keke-1026/boxblox" target="_blank" rel="noopener" style="color: inherit; text-decoration: underline;">GitHub</a> ・ <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank" rel="noopener" style="color: inherit; text-decoration: underline;">CC BY-NC-SA 4.0</a>
         </div>
     </div>
@@ -249,6 +258,11 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/PointerLockControls.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cannon.js/0.6.2/cannon.min.js"></script>
+    <script>
+        // バージョンを上げるときは、ここと version.json を同じ値にしてください
+        window.APP_VERSION = '1.4.0';
+        document.write('<script src="map.js?v=' + window.APP_VERSION + '"><\/script>');
+    </script>
 
     <script>
         let controls; 
@@ -274,6 +288,31 @@
             notif.className = 'notification'; notif.innerText = msg; container.appendChild(notif);
             setTimeout(() => { if(notif.parentNode) notif.parentNode.removeChild(notif); }, 3000);
         }
+        // ===== バージョン比較 =====
+        // いま開いているページ(APP_VERSION)と、公開されている最新の version.json を比べ、違えば知らせる
+        const APP_VERSION = window.APP_VERSION;
+        document.getElementById('app-version').textContent = APP_VERSION;
+        let dismissedLatest = null;
+        function showUpdateBanner(latest) {
+            if (dismissedLatest === latest) return;
+            document.getElementById('update-banner-text').textContent = `新しいバージョン v${latest} が公開されています (現在 v${APP_VERSION})`;
+            document.getElementById('update-banner').style.display = 'flex';
+            document.getElementById('update-banner-reload').onclick = () => { location.href = location.pathname + '?v=' + encodeURIComponent(latest); };
+            document.getElementById('update-banner-close').onclick = () => { dismissedLatest = latest; document.getElementById('update-banner').style.display = 'none'; };
+            showNotification(`新しいバージョン v${latest} があります。更新してください`);
+        }
+        async function checkLatestVersion() {
+            try {
+                const res = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' });
+                if (!res.ok) return;
+                const latest = String((await res.json()).version || '').trim();
+                if (latest && latest !== APP_VERSION) showUpdateBanner(latest);
+            } catch (e) { /* オフラインやローカル実行では何もしない */ }
+        }
+        checkLatestVersion();
+        setInterval(checkLatestVersion, 5 * 60 * 1000);
+        document.addEventListener('visibilitychange', () => { if (!document.hidden) checkLatestVersion(); });
+
         function formatTimeElapsed(ms) { const m = Math.floor(ms / 60000), s = Math.floor((ms % 60000) / 1000); return `${m}分${s}秒`; }
         function formatTimeHM(timestamp) { const date = new Date(timestamp); return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`; }
         function formatDateTime(timestamp) { const date = new Date(timestamp); return `${date.getMonth() + 1}/${date.getDate()} ${formatTimeHM(timestamp)}`; }
@@ -438,6 +477,7 @@
         async function proceedJoin() {
             try {
                 const { roomId, type, roomData } = pendingJoinData;
+                if (!window.BOXBLOX_MAP) { return showNotification('マップデータを読み込めませんでした。ページを再読み込みしてください'); }
                 const pSnap = await db.ref(`rooms/${roomId}/players/${myName}`).once('value');
                 if(pSnap.exists()) { return showNotification("その名前は現在この部屋で使用されています。"); }
                 
@@ -565,14 +605,16 @@
                 }, 1000);
             }
 
+            const MAP = window.BOXBLOX_MAP, MAP_HALF_SIZE = MAP.halfSize, UG_Y = MAP.undergroundY;
             const world = new CANNON.World(); world.gravity.set(0, -25, 0); world.broadphase = new CANNON.NaiveBroadphase();
             const groundBody = new CANNON.Body({ mass: 0, shape: new CANNON.Plane(), material: new CANNON.Material({ friction: 0.1, restitution: 0.3 }) });
-            groundBody.quaternion.setFromAxisAngle(new CANNON.Vec3(1, 0, 0), -Math.PI / 2); world.addBody(groundBody);
+            groundBody.quaternion.setFromAxisAngle(new CANNON.Vec3(1, 0, 0), -Math.PI / 2); groundBody.position.set(0, UG_Y - 1, 0); world.addBody(groundBody); // 無限平面は落下防止用に地下の床(厚み1)の真下。同じ高さに重ねると摩擦が二重になり歩く速度が落ちる
 
             const myShape = new CANNON.Sphere(0.8);
             const myBody = new CANNON.Body({ mass: 50, shape: myShape, fixedRotation: true, linearDamping: 0.9 }); myBody.position.set(0, 2, 0); world.addBody(myBody);
 
             const scene = new THREE.Scene(); scene.background = new THREE.Color(0xffffff); scene.fog = new THREE.Fog(0xffffff, 10, 80);
+            const dayColor = new THREE.Color(0xffffff), undergroundColor = new THREE.Color(0x1b2328); let undergroundMix = 0;
             const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000); 
             
             const renderer = new THREE.WebGLRenderer({ antialias: true }); 
@@ -583,18 +625,17 @@
             const ambientLight = new THREE.AmbientLight(0xffffff, 1.5); scene.add(ambientLight); 
             const dirLight = new THREE.DirectionalLight(0xffffff, 0.8); dirLight.position.set(10, 20, 10); scene.add(dirLight); 
             
-            const MAP_HALF_SIZE = 38;
-            scene.add(new THREE.GridHelper(MAP_HALF_SIZE * 2, MAP_HALF_SIZE, 0x888888, 0xdddddd));
+            const grid = new THREE.GridHelper(MAP_HALF_SIZE * 2, MAP_HALF_SIZE, 0x888888, 0xdddddd); grid.position.y = 0.02; scene.add(grid);
 
-            const WALL_HEIGHT = 25, WALL_THICK = 1;
+            const WALL_HEIGHT = 25, WALL_THICK = 1, WALL_BOTTOM = UG_Y - 2, WALL_SPAN_Y = WALL_HEIGHT - WALL_BOTTOM, WALL_CENTER_Y = (WALL_HEIGHT + WALL_BOTTOM) / 2;
             const wallMaterial = new THREE.MeshStandardMaterial({ color: 0xb0b0b0, transparent: true, opacity: 0.35 });
             function addBoundaryWall(x, z, w, d) {
-                const wallShape = new CANNON.Box(new CANNON.Vec3(w/2, WALL_HEIGHT/2, d/2));
+                const wallShape = new CANNON.Box(new CANNON.Vec3(w/2, WALL_SPAN_Y/2, d/2));
                 const wallBody = new CANNON.Body({ mass: 0, shape: wallShape });
-                wallBody.position.set(x, WALL_HEIGHT/2, z);
+                wallBody.position.set(x, WALL_CENTER_Y, z);
                 world.addBody(wallBody);
-                const wallMesh = new THREE.Mesh(new THREE.BoxGeometry(w, WALL_HEIGHT, d), wallMaterial);
-                wallMesh.position.set(x, WALL_HEIGHT/2, z);
+                const wallMesh = new THREE.Mesh(new THREE.BoxGeometry(w, WALL_SPAN_Y, d), wallMaterial);
+                wallMesh.position.set(x, WALL_CENTER_Y, z);
                 scene.add(wallMesh);
             }
             const mapEdge = MAP_HALF_SIZE + WALL_THICK / 2, mapSpan = MAP_HALF_SIZE * 2 + WALL_THICK * 2;
@@ -603,24 +644,23 @@
             addBoundaryWall(-mapEdge, 0, WALL_THICK, mapSpan); 
             addBoundaryWall( mapEdge, 0, WALL_THICK, mapSpan);
 
-            // ===== マップ地形 (全クライアントで同一の固定構造物。同期は不要) =====
-            // 中央(スポーン地点 半径約12)は空けてある
+            // ===== マップ地形 (map.js のデータから作る。全クライアントで同一なので同期は不要) =====
             const terrainEdgeMat = new THREE.LineBasicMaterial({ color: 0x607d8b });
-            function addTerrainPiece(geo, shape, color, pos, quat) {
+            function addTerrainPiece(geo, shape, color, pos, quat, edges) {
                 const mesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: color }));
                 mesh.position.set(pos.x, pos.y, pos.z);
-                mesh.add(new THREE.LineSegments(new THREE.EdgesGeometry(geo), terrainEdgeMat));
+                if (edges !== false) mesh.add(new THREE.LineSegments(new THREE.EdgesGeometry(geo), terrainEdgeMat));
                 const body = new CANNON.Body({ mass: 0, shape: shape });
                 body.position.set(pos.x, pos.y, pos.z);
                 if (quat) { mesh.quaternion.copy(quat); body.quaternion.set(quat.x, quat.y, quat.z, quat.w); }
                 scene.add(mesh); world.addBody(body);
             }
-            // 底面が地面に接する直方体 (cx, cz = 中心座標 / w = X幅, h = 高さ, d = Z幅)
-            function addTerrainBox(cx, cz, w, h, d, color) {
-                addTerrainPiece(new THREE.BoxGeometry(w, h, d), new CANNON.Box(new CANNON.Vec3(w / 2, h / 2, d / 2)), color, { x: cx, y: h / 2, z: cz });
+            // 直方体 (cx, cz = 中心 / w = X幅, h = 高さ, d = Z幅 / baseY = 底面の高さ)
+            function addTerrainBox(cx, cz, w, h, d, color, baseY) {
+                addTerrainPiece(new THREE.BoxGeometry(w, h, d), new CANNON.Box(new CANNON.Vec3(w / 2, h / 2, d / 2)), color, { x: cx, y: (baseY || 0) + h / 2, z: cz });
             }
-            // スロープ: (startX, startZ) の地面から方向 (dirX, dirZ) へ run だけ進む間に height まで上がる
-            function addTerrainRamp(startX, startZ, dirX, dirZ, run, height, width, color) {
+            // スロープ: (startX, startZ, startY) から方向 (dirX, dirZ) へ run だけ進む間に height だけ上がる (マイナスなら下る)
+            function addTerrainRamp(startX, startZ, dirX, dirZ, run, height, width, color, startY) {
                 const T = 1, len = Math.sqrt(run * run + height * height), theta = Math.atan2(height, run);
                 const qTilt = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), theta);
                 const qYaw = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.atan2(-dirZ, dirX));
@@ -630,30 +670,36 @@
                     new THREE.BoxGeometry(len, T, width),
                     new CANNON.Box(new CANNON.Vec3(len / 2, T / 2, width / 2)),
                     color,
-                    { x: startX + dirX * run / 2 + sinT * dirX * T / 2, y: height / 2 - cosT * T / 2, z: startZ + dirZ * run / 2 + sinT * dirZ * T / 2 },
+                    { x: startX + dirX * run / 2 + sinT * dirX * T / 2, y: (startY || 0) + height / 2 - cosT * T / 2, z: startZ + dirZ * run / 2 + sinT * dirZ * T / 2 },
                     q
                 );
             }
-
-            // 四隅の塔 + 中心側から登るスロープ
-            const TOWER_H = 3, TOWER_SIZE = 12, TOWER_C = 30, RAMP_RUN = 9, RAMP_W = 4;
-            [[1, 1], [1, -1], [-1, 1], [-1, -1]].forEach(([sx, sz]) => {
-                addTerrainBox(sx * TOWER_C, sz * TOWER_C, TOWER_SIZE, TOWER_H, TOWER_SIZE, 0xcfd8dc);
-                addTerrainRamp(sx * (TOWER_C - TOWER_SIZE / 2 - RAMP_RUN), sz * TOWER_C, sx, 0, RAMP_RUN, TOWER_H, RAMP_W, 0xffe0b2);
-                // 塔の上の柱
-                addTerrainBox(sx * (TOWER_C + 2), sz * (TOWER_C + 2), 2, 5, 2, 0xb0bec5);
+            // 地表: 穴(地下への入口)を避けて、厚みのあるタイルを敷き詰める
+            (function buildSurface() {
+                const t = MAP.surfaceThickness, H = MAP.halfSize, holes = MAP.surfaceHoles || [];
+                const xs = new Set([-H, H]), zs = new Set([-H, H]);
+                holes.forEach(h => { xs.add(h.x0); xs.add(h.x1); zs.add(h.z0); zs.add(h.z1); });
+                const xa = [...xs].sort((p, q) => p - q), za = [...zs].sort((p, q) => p - q);
+                for (let i = 0; i < xa.length - 1; i++) for (let j = 0; j < za.length - 1; j++) {
+                    const cx = (xa[i] + xa[i + 1]) / 2, cz = (za[j] + za[j + 1]) / 2, w = xa[i + 1] - xa[i], d = za[j + 1] - za[j];
+                    if (holes.some(h => cx > h.x0 && cx < h.x1 && cz > h.z0 && cz < h.z1)) continue;
+                    addTerrainPiece(new THREE.BoxGeometry(w, t, d), new CANNON.Box(new CANNON.Vec3(w / 2, t / 2, d / 2)), MAP.surfaceColor, { x: cx, y: -t / 2, z: cz }, null, false);
+                }
+            })();
+            (MAP.boxes || []).forEach(b => addTerrainBox(b.x, b.z, b.w, b.h, b.d, b.color, b.y));
+            (MAP.ramps || []).forEach(r => addTerrainRamp(r.x, r.z, r.dir[0], r.dir[1], r.run, r.rise, r.width, r.color, r.y));
+            // はしごの見た目 (当たり判定は無し。登る処理は updateLadder)
+            const ladderMat = new THREE.MeshStandardMaterial({ color: 0xa1887f });
+            (MAP.ladders || []).forEach(l => {
+                const ux = -l.dir[0], uz = -l.dir[1], width = l.width || 1.6, len = l.y1 - l.y0 + 0.6;
+                const g = new THREE.Group();
+                [-1, 1].forEach(sd => { const rail = new THREE.Mesh(new THREE.BoxGeometry(0.08, len, 0.08), ladderMat); rail.position.set(sd * (width / 2 - 0.08), len / 2 - 0.3, 0); g.add(rail); });
+                for (let y = 0.3; y < l.y1 - l.y0; y += 0.4) { const rung = new THREE.Mesh(new THREE.BoxGeometry(width - 0.12, 0.05, 0.05), ladderMat); rung.position.set(0, y, 0); g.add(rung); }
+                g.position.set(l.x + ux * 0.06, l.y0, l.z + uz * 0.06);
+                g.rotation.y = Math.atan2(ux, uz);
+                scene.add(g);
             });
-
-            // 北側の階段 (ジャンプで登る。1段1.2m)
-            addTerrainBox(0, -14, 8, 1.2, 4, 0xc5e1a5);
-            addTerrainBox(0, -18, 8, 2.4, 4, 0xaed581);
-            addTerrainBox(0, -24, 8, 3.6, 8, 0x9ccc65);
-
-            // 東西南の柱
-            [[18, 0], [-18, 0], [0, 18]].forEach(([px, pz]) => addTerrainBox(px, pz, 2, 8, 2, 0xb0bec5));
-            // 南側に低い壁パネル(遮蔽物)
-            addTerrainBox(-8, 24, 10, 2, 1, 0x90caf9);
-            addTerrainBox(8, 24, 10, 2, 1, 0x90caf9);
+            // ===== /マップ地形 =====
 
             controls = new THREE.PointerLockControls(camera, document.body);
             const pointerLockSupported = typeof document.body.requestPointerLock === 'function';
@@ -865,7 +911,7 @@
                 if (boxes.length >= MAX_OBJECTS_PER_ROOM) { showNotification(`これ以上ブロックを出せません（上限${MAX_OBJECTS_PER_ROOM}個）`); return; }
                 type = type || selectedBlockType;
                 const colorNum = Math.floor(Math.random() * 0xffffff);
-                const pos = new THREE.Vector3(); camera.getWorldDirection(pos); pos.multiplyScalar(5).add(camera.position); pos.y += 2;
+                const pos = new THREE.Vector3(); camera.getWorldDirection(pos); pos.multiplyScalar(5).add(camera.position); pos.y += (myBody.position.y < -1 ? 0.3 : 2);
                 objectsRef.push({ 
                     type: type, x: pos.x, y: pos.y, z: pos.z, 
                     qx: 0, qy: 0, qz: 0, qw: 1,
@@ -943,26 +989,74 @@
             }
             document.addEventListener('mousemove', e => { if (rotateMode && heldBody) applyLookDelta(e.movementX * 0.002, e.movementY * 0.002); });
             
+            // ===== 接地判定 =====
+            // 上向きの面(地面・ブロック・塔・階段・スロープの上)に接している間だけジャンプできる (地下でも同じ判定)
+            let lastJumpAt = -1e9;
+            function isPlayerGrounded() {
+                for (const c of world.contacts) {
+                    let ny;
+                    if (c.bi === myBody) ny = -c.ni.y; else if (c.bj === myBody) ny = c.ni.y; else continue;
+                    if (ny > 0.5) return true;
+                }
+                return false;
+            }
+            // ===== /接地判定 =====
+
+            // ===== はしご =====
+            // 近づいて壁(はしごの方)を向きながらWで登る / Sで降りる / Spaceで飛び降りる。上端でWを押すと足場へ乗り移る
+            const LADDER_STANDOFF = 0.9, LADDER_CLIMB_SPEED = 6, LADDER_EXIT_INSET = 0.5;   // 上端で足場の縁から何m内側に乗り移るか
+            // (ux, uz) は壁から離れる向き
+            const ladders = (MAP.ladders || []).map(l => ({ x: l.x, z: l.z, ux: -l.dir[0], uz: -l.dir[1], y0: l.y0, y1: l.y1, width: l.width || 1.6 }));
+            let activeLadder = null, ladderCooldownUntil = 0;
+            function ladderCoords(l, pos) {
+                const ox = pos.x - l.x, oz = pos.z - l.z;
+                return { along: ox * l.ux + oz * l.uz, lateral: -ox * l.uz + oz * l.ux };
+            }
+            function findLadder(pos) {
+                const feet = pos.y - 0.8;
+                for (const l of ladders) {
+                    const c = ladderCoords(l, pos);
+                    if (c.along > 0.1 && c.along < 1.6 && Math.abs(c.lateral) < l.width / 2 + 0.3 && feet > l.y0 - 0.3 && feet < l.y1 + 0.3) return l;
+                }
+                return null;
+            }
+            // 毎フレーム、通常の移動処理のあとに呼ぶ。(faceX, faceZ) は水平方向の視線
+            function updateLadder(now, wantUp, wantDown, faceX, faceZ) {
+                if (activeLadder) {
+                    const l = activeLadder, feet = myBody.position.y - 0.8;
+                    if (findLadder(myBody.position) !== l) { activeLadder = null; ladderCooldownUntil = now + 300; return; }
+                    if (wantUp && feet >= l.y1 - 0.15) {   // 上端: 足場の上へ乗り移る
+                        activeLadder = null; ladderCooldownUntil = now + 600;
+                        myBody.position.set(l.x - l.ux * LADDER_EXIT_INSET, l.y1 + 0.85, l.z - l.uz * LADDER_EXIT_INSET);
+                        myBody.velocity.set(0, 0, 0); return;
+                    }
+                    if (wantDown && feet <= l.y0 + 0.05) { activeLadder = null; ladderCooldownUntil = now + 300; return; }
+                    const k = (LADDER_STANDOFF - ladderCoords(l, myBody.position).along) * 0.3;
+                    myBody.position.x += l.ux * k; myBody.position.z += l.uz * k;
+                    myBody.velocity.x = 0; myBody.velocity.z = 0;
+                    myBody.velocity.y = (wantUp && !wantDown) ? LADDER_CLIMB_SPEED : ((wantDown && !wantUp) ? -LADDER_CLIMB_SPEED : 0);
+                    return;
+                }
+                if (wantUp && now >= ladderCooldownUntil) {
+                    const l = findLadder(myBody.position);
+                    if (l && (faceX * -l.ux + faceZ * -l.uz) > 0.35) activeLadder = l;
+                }
+            }
+            // ===== /はしご =====
+
             let canJump = false, isCrouching = false, isFlying = false, lastJumpTime = 0;
             
             function handleJump() {
                 const now = Date.now();
+                if (activeLadder && !isFlying) { activeLadder = null; ladderCooldownUntil = performance.now() + 500; myBody.velocity.y = 8; lastJumpTime = now; return; } // はしごから飛び降りる
                 if(currentRoomType === 'private' && now - lastJumpTime < 350) {
                     isFlying = !isFlying; showNotification(isFlying ? "空中浮遊: ON" : "空中浮遊: OFF");
                     if(isFlying) { myBody.mass = 0; myBody.velocity.set(0,0,0); } else { myBody.mass = 50; }
                 } else {
-                    if (canJump && !isFlying) { myBody.velocity.y = 12; canJump = false; }
+                    if (canJump && !isFlying) { myBody.velocity.y = 12; canJump = false; lastJumpAt = performance.now(); }
                 }
                 lastJumpTime = now;
             }
-
-            // 上向きの面(地面・ブロック・塔・階段の上)に接していればジャンプ可能にする
-            const contactNormal = new CANNON.Vec3(), upAxis = new CANNON.Vec3(0, 1, 0);
-            myBody.addEventListener('collide', e => {
-                const c = e.contact;
-                if (c.bi.id === myBody.id) c.ni.negate(contactNormal); else contactNormal.copy(c.ni);
-                if (contactNormal.dot(upAxis) > 0.5) canJump = true;
-            });
 
             let moveF = false, moveB = false, moveL = false, moveR = false, moveShift = false, moveJump = false, moveCrouch = false, lookLeft = false, lookRight = false, lookUp = false, lookDown = false;
             let fKeyActive = false;
@@ -1134,8 +1228,14 @@
                 if(isFlying) {
                     if (moveJump) myBody.velocity.y = 15; else if (moveCrouch) myBody.velocity.y = -15; else myBody.velocity.y = 0;
                 } else {
-                    if (myBody.position.y < 1.1) canJump = true;
+                    canJump = (performance.now() - lastJumpAt > 120) && isPlayerGrounded();
                 }
+
+                if (isFlying) activeLadder = null; else updateLadder(performance.now(), moveF, moveB, direction.x, direction.z);
+
+                // 地下では背景と霧を暗くする
+                undergroundMix += ((myBody.position.y < -1.2 ? 1 : 0) - undergroundMix) * Math.min(1, delta * 5);
+                scene.background.lerpColors(dayColor, undergroundColor, undergroundMix); scene.fog.color.copy(scene.background);
 
                 const baseCamY = isCrouching ? 0.2 : 1.0;
                 camera.position.set(myBody.position.x, myBody.position.y + baseCamY, myBody.position.z);
